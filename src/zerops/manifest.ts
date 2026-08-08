@@ -26,6 +26,20 @@ import yaml from 'js-yaml';
 /** Maximum length Zerops allows for a service hostname. */
 export const MAX_HOSTNAME_LENGTH = 25;
 
+/**
+ * Build the `buildFromGit` value.
+ *
+ * A trailing `.git` must be stripped before appending `@<branch>`. GitHub's
+ * `clone_url` ends in `.git`, which produces `…/repo.git@feature/x` - Zerops
+ * accepts that string at import time but the build silently never starts and
+ * the service sits in READY_TO_DEPLOY with no app version. Removing the
+ * suffix makes it work, including for branch names containing slashes.
+ */
+export function gitSource(repo: string, branch?: string): string {
+  const normalised = repo.replace(/\.git$/, '');
+  return branch ? `${normalised}@${branch}` : normalised;
+}
+
 /** Reserved for the suffixes we append (`api`, `db`). */
 const LONGEST_SUFFIX = 'api'.length;
 
@@ -151,7 +165,7 @@ export function buildEnvironment(
     type: runtime,
     priority: 1,
     enableSubdomainAccess: true,
-    buildFromGit: spec.branch ? `${spec.repo}@${spec.branch}` : spec.repo,
+    buildFromGit: gitSource(spec.repo, spec.branch),
     zeropsSetup: setupName,
     zeropsYaml: {
       zerops: [

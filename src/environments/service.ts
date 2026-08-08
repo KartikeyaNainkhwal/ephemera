@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 
 import { config } from '../config.js';
-import { probe } from '../zerops/client.js';
+import { listServices, probe } from '../zerops/client.js';
 import { serviceDelete, serviceImport } from '../zerops/cli.js';
 import { buildEnvironment, sanitiseSlug, type EnvironmentSpec } from '../zerops/manifest.js';
 import * as store from './store.js';
@@ -92,13 +92,38 @@ async function provision(
   importYaml: string,
 ): Promise<void> {
   try {
-    await serviceImport(importYaml);
+    try {
+      await serviceImport(importYaml);
+    } catch (error) {
+      // `zcli` sometimes exits non-zero *after* the import has been accepted
+      // and the services created ("last command has finished with error").
+      // An exit code is not evidence; the project is. If the application
+      // service now exists, carry on and let the readiness probe decide.
+      const message = error instanceof Error ? error.message : String(error);
+      const created = await serviceExists(record.appHostname);
+      if (!created) throw error;
+      console.warn(
+        `[ephemera] ${record.slug}: zcli reported an error but ` +
+          `${record.appHostname} exists; continuing. (${message.split('\n')[0]})`,
+      );
+    }
+
     announce(await store.setStatus(record.id, 'building'));
     await waitUntilServing(record);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[ephemera] provisioning failed for ${record.slug}:`, message);
     announce(await store.setStatus(record.id, 'failed', message));
+  }
+}
+
+/** Ask Zerops whether a service with this hostname is present. */
+async function serviceExists(hostname: string): Promise<boolean> {
+  try {
+    const services = await listServices();
+    return services.some((service) => service.name === hostname);
+  } catch {
+    return false;
   }
 }
 
@@ -157,27 +182,62 @@ export async function destroyEnvironment(id: string): Promise<EnvironmentRecord 
 
   announce(await store.setStatus(record.id, 'destroying'));
 
-  const failures: string[] = [];
-  for (const hostname of [record.appHostname, record.dbHostname].filter(
+  const hostnames = [record.appHostname, record.dbHostname].filter(
     Boolean,
-  ) as string[]) {
+  ) as string[];
+
+  for (const hostname of hostnames) {
     try {
       await serviceDelete(hostname);
     } catch (error) {
+      // Deliberately swallowed. As with import, zcli's exit code is not
+      // evidence of what happened - the surviving-services check below is.
       const message = error instanceof Error ? error.message : String(error);
-      // A service that is already gone is a success from our perspective.
-      if (!/not found|does not exist/i.test(message)) {
-        failures.push(`${hostname}: ${message}`);
-      }
+      console.warn(`[ephemera] delete ${hostname} reported: ${message.split('\n')[0]}`);
     }
   }
 
-  const finalRecord = failures.length
-    ? await store.setStatus(record.id, 'failed', failures.join('; '))
+  // Deletion is asynchronous. Confirm the services are actually gone rather
+  // than reporting success from an exit code, so the dashboard never claims
+  // an environment was torn down while it is still billing.
+  const surviving = await waitForRemoval(hostnames);
+
+  const finalRecord = surviving.length
+    ? await store.setStatus(
+        record.id,
+        'failed',
+        `Services still present after teardown: ${surviving.join(', ')}. ` +
+          `They may still be billing and need manual removal.`,
+      )
     : await store.setStatus(record.id, 'destroyed');
 
   announce(finalRecord);
   return finalRecord;
+}
+
+/**
+ * Poll until the named services disappear from the project.
+ * Returns whatever is still standing when the deadline passes.
+ */
+async function waitForRemoval(
+  hostnames: string[],
+  timeoutMs = 90_000,
+  intervalMs = 5_000,
+): Promise<string[]> {
+  const deadline = Date.now() + timeoutMs;
+  let remaining = [...hostnames];
+
+  while (Date.now() < deadline && remaining.length > 0) {
+    try {
+      const present = new Set((await listServices()).map((service) => service.name));
+      remaining = remaining.filter((hostname) => present.has(hostname));
+    } catch {
+      // Transient API failure; try again until the deadline.
+    }
+    if (remaining.length === 0) break;
+    await sleep(intervalMs);
+  }
+  return remaining;
 }
 
 function sleep(ms: number): Promise<void> {
