@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ephemera — disposable environments on Zerops</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b0e14;
+    --panel: #141922;
+    --panel-2: #1b212c;
+    --line: #262e3b;
+    --text: #e6edf7;
+    --muted: #8b98ad;
+    --accent: #5eead4;
+    --accent-dim: #134e4a;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    background: linear-gradient(180deg, #101520, var(--bg));
+  }
+  h1 {
+    margin: 0;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    font-weight: 650;
+  }
+  h1 span { color: var(--accent); }
+  .tagline { color: var(--muted); font-size: 13.5px; margin: 3px 0 0; }
+  .live {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted); transition: background .3s;
+  }
+  .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .stat { background: var(--bg); padding: 16px 28px; }
+  .stat .k { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
+  .stat .v { font-size: 25px; font-family: var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  main { padding: 24px 28px 60px; }
+  .empty {
+    border: 1px dashed var(--line);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--muted);
+  }
+  .empty code {
+    display: block; margin-top: 14px; color: var(--accent);
+    font-family: var(--mono); font-size: 13px; white-space: pre-wrap;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-top { display: flex; align-items: center; gap: 10px; }
+  .slug { font-family: var(--mono); font-size: 14.5px; font-weight: 600; }
+  .pill {
+    margin-left: auto;
+    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; font-weight: 600;
+    border: 1px solid transparent;
+  }
+  .pill.creating, .pill.building {
+    color: var(--amber); background: #3b2f0b; border-color: #63500f;
+  }
+  .pill.ready { color: var(--accent); background: var(--accent-dim); border-color: #1c6f68; }
+  .pill.failed { color: var(--red); background: #3f1717; border-color: #6d2525; }
+  .pill.destroying, .pill.destroyed {
+    color: var(--muted); background: var(--panel-2); border-color: var(--line);
+  }
+
+  .title { color: var(--muted); font-size: 13px; margin: -4px 0 0; }
+  .url {
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--blue); text-decoration: none;
+    word-break: break-all;
+  }
+  .url:hover { text-decoration: underline; }
+  .url.pending { color: var(--muted); pointer-events: none; }
+
+  .services { display: flex; gap: 7px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    padding: 3px 8px; border-radius: 6px; color: var(--muted);
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+
+  .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 10px; border-top: 1px solid var(--line); padding-top: 12px;
+  }
+  .meta div { font-size: 11.5px; color: var(--muted); }
+  .meta .mv {
+    display: block; font-family: var(--mono); font-size: 14px;
+    color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums;
+  }
+  .err {
+    font-size: 12px; color: var(--red); font-family: var(--mono);
+    background: #2a1414; border: 1px solid #542020;
+    padding: 8px 10px; border-radius: 7px; word-break: break-word;
+  }
+  button.destroy {
+    align-self: flex-start; background: transparent; color: var(--muted);
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 11px; font-size: 12px; cursor: pointer;
+  }
+  button.destroy:hover:not(:disabled) { color: var(--red); border-color: #6d2525; }
+  button.destroy:disabled { opacity: .4; cursor: not-allowed; }
+  footer {
+    padding: 0 28px 40px; color: var(--muted); font-size: 12px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Ephem<span>era</span></h1>
+    <p class="tagline">Disposable, fully isolated environments on Zerops — one per pull request, one per agent task.</p>
+  </div>
+  <div class="live"><span class="dot" id="dot"></span><span id="liveText">connecting</span></div>
+</header>
+
+<section class="stats">
+  <div class="stat"><div class="k">Live environments</div><div class="v" id="sLive">0</div></div>
+  <div class="stat"><div class="k">Burn rate</div><div class="v" id="sBurn">$0.0000/h</div></div>
+  <div class="stat"><div class="k">Total spend</div><div class="v" id="sSpend">$0.00000</div></div>
+  <div class="stat"><div class="k">Fastest provision</div><div class="v" id="sFast">—</div></div>
+</section>
+
+<main>
+  <div id="empty" class="empty">
+    No environments yet.
+    <code>curl -X POST $HOST/api/environments \
+  -H 'content-type: application/json' \
+  -d '{"slug":"demo","repo":"https://github.com/zeropsio/recipe-nodejs"}'</code>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  Each environment is a dedicated application container plus its own PostgreSQL
+  database, created from a git repository and destroyed on demand. Costs are
+  estimates derived from published Zerops rates.
+</footer>
+
+<script>
+const state = new Map();
+
+const fmtCost = (n) =>
+  n >= 1 ? '$' + n.toFixed(2) : n >= 0.01 ? '$' + n.toFixed(3) : '$' + n.toFixed(5);
+
+function relative(target) {
+  const ms = new Date(target).getTime() - Date.now();
+  if (ms <= 0) return 'expired';
+  const m = Math.floor(ms / 60000);
+  if (m < 60) return m + 'm';
+  const h = Math.floor(m / 60);
+  return h + 'h ' + (m % 60) + 'm';
+}
+
+function card(env) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.id = 'env-' + env.id;
+
+  const ready = env.status === 'ready';
+  const gone = env.status === 'destroyed' || env.status === 'destroying';
+
+  el.innerHTML = `
+    <div class="card-top">
+      <span class="slug">${env.slug}</span>
+      <span class="pill ${env.status}">${env.status}</span>
+    </div>
+    ${env.title ? `<p class="title">${escapeHtml(env.title)}</p>` : ''}
+    <a class="url ${ready ? '' : 'pending'}" href="${env.url}" target="_blank" rel="noopener">${env.url}</a>
+    <div class="services">
+      <span class="chip">app <b>${env.services.app}</b></span>
+      ${env.services.database ? `<span class="chip">postgres <b>${env.services.database}</b></span>` : ''}
+      ${env.pullRequest ? `<span class="chip">PR <b>#${env.pullRequest.number}</b></span>` : `<span class="chip">source <b>${env.source}</b></span>`}
+    </div>
+    ${env.error ? `<div class="err">${escapeHtml(env.error)}</div>` : ''}
+    <div class="meta">
+      <div>Provisioned<span class="mv">${env.provisioningSeconds !== null ? env.provisioningSeconds + 's' : '—'}</span></div>
+      <div>Cost<span class="mv" data-cost>${fmtCost(env.cost.accrued)}</span></div>
+      <div>${gone ? 'Ended' : 'Expires'}<span class="mv" data-ttl>${gone ? '—' : relative(env.expiresAt)}</span></div>
+    </div>
+    ${gone ? '' : `<button class="destroy" data-id="${env.id}">Destroy now</button>`}
+  `;
+
+  const btn = el.querySelector('button.destroy');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Destroying…';
+      await fetch('/api/environments/' + env.id, { method: 'DELETE' });
+    });
+  }
+  return el;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function render() {
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const list = [...state.values()].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  grid.replaceChildren(...list.map(card));
+  empty.style.display = list.length ? 'none' : 'block';
+
+  const live = list.filter((e) => e.status !== 'destroyed');
+  const running = list.filter((e) => ['creating', 'building', 'ready'].includes(e.status));
+  document.getElementById('sLive').textContent = live.length;
+  document.getElementById('sBurn').textContent =
+    '$' + running.reduce((s, e) => s + e.cost.hourly, 0).toFixed(4) + '/h';
+  document.getElementById('sSpend').textContent =
+    fmtCost(list.reduce((s, e) => s + e.cost.accrued, 0));
+
+  const times = list.map((e) => e.provisioningSeconds).filter((v) => typeof v === 'number');
+  document.getElementById('sFast').textContent = times.length ? Math.min(...times) + 's' : '—';
+}
+
+// Advance the cost and TTL readouts locally between server events, so the
+// dashboard feels live rather than stepping once a minute.
+setInterval(() => {
+  for (const env of state.values()) {
+    if (['creating', 'building', 'ready'].includes(env.status)) {
+      env.cost.accrued += env.cost.hourly / 3600;
+      const el = document.querySelector('#env-' + env.id + ' [data-cost]');
+      if (el) el.textContent = fmtCost(env.cost.accrued);
+      const ttl = document.querySelector('#env-' + env.id + ' [data-ttl]');
+      if (ttl) ttl.textContent = relative(env.expiresAt);
+    }
+  }
+  const running = [...state.values()].filter((e) =>
+    ['creating', 'building', 'ready'].includes(e.status));
+  document.getElementById('sSpend').textContent =
+    fmtCost([...state.values()].reduce((s, e) => s + e.cost.accrued, 0));
+  document.getElementById('sBurn').textContent =
+    '$' + running.reduce((s, e) => s + e.cost.hourly, 0).toFixed(4) + '/h';
+}, 1000);
+
+function connect() {
+  const source = new EventSource('/api/stream');
+  const dot = document.getElementById('dot');
+  const text = document.getElementById('liveText');
+
+  source.addEventListener('open', () => {
+    dot.classList.add('on');
+    text.textContent = 'live';
+  });
+  source.addEventListener('snapshot', (event) => {
+    state.clear();
+    for (const env of JSON.parse(event.data).environments) state.set(env.id, env);
+    render();
+  });
+  source.addEventListener('environment', (event) => {
+    const env = JSON.parse(event.data);
+    state.set(env.id, env);
+    render();
+  });
+  source.addEventListener('error', () => {
+    dot.classList.remove('on');
+    text.textContent = 'reconnecting';
+  });
+}
+connect();
+</script>
+</body>
+</html>

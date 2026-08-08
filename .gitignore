@@ -1,0 +1,14 @@
+# Secrets - this repository is public. Never commit credentials.
+.env
+.env.*
+*.token
+.zcli.yml
+.config/
+
+# Build output
+dist/
+node_modules/
+
+# Logs / scratch
+*.log
+tmp/

@@ -1,0 +1,38 @@
+zerops:
+  - setup: ephemera
+    build:
+      base: nodejs@22
+      buildCommands:
+        - npm ci
+        - npm run build
+      # node_modules ships with the artifact because the control plane invokes
+      # the zcli binary that lives inside it.
+      deployFiles:
+        - ./dist
+        - ./node_modules
+        - ./package.json
+      cache:
+        - node_modules
+    run:
+      base: nodejs@22
+      ports:
+        - port: 3000
+          httpSupport: true
+      envVariables:
+        NODE_ENV: production
+        PORT: "3000"
+        # Connection to the control plane's own database. A Zerops PostgreSQL
+        # service always exposes database name and user as the literal "db";
+        # only the hostname varies.
+        DB_HOST: ephemeradb
+        DB_NAME: db
+        DB_USER: db
+        DB_PASS: ${ephemeradb_password}
+        # ZEROPS_TOKEN, ZEROPS_PROJECT_ID, ZEROPS_PROJECT_CODE and the optional
+        # GITHUB_TOKEN / GITHUB_WEBHOOK_SECRET are set as secret variables in
+        # the Zerops GUI. They are never committed.
+      start: npm start
+      healthCheck:
+        httpGet:
+          port: 3000
+          path: /api/health

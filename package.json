@@ -1,0 +1,29 @@
+{
+  "name": "ephemera",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Disposable, fully isolated environments on Zerops - one per pull request, one per AI agent task.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && mkdir -p dist/web && cp src/web/dashboard.html dist/web/dashboard.html",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@zerops/zcli": "^1.1.0",
+    "fastify": "^5.2.0",
+    "js-yaml": "^4.1.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
