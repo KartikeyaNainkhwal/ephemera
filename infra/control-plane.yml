@@ -1,0 +1,47 @@
+# Zerops Import YAML for the Ephemera control plane itself.
+#
+#   zcli project service-import infra/control-plane.yml -P <project-id>
+#
+# Replace the placeholder values below before importing. Secrets are set here
+# as envSecrets so they never appear in the application's source; alternatively
+# set them in the Zerops GUI under the service's environment variables.
+#
+# Note: `enableSubdomainAccess` is deliberately absent. A service created
+# before it has any code has no known ports, so enabling a subdomain at import
+# time silently does nothing. Run this after the first deploy instead:
+#
+#   zcli service enable-subdomain ephemera -P <project-id>
+
+services:
+  - hostname: ephemeradb
+    type: postgresql:single@16
+    mode: NON_HA
+    # Higher priority is created first, so the database exists before the
+    # control plane starts and runs its schema migration.
+    priority: 10
+
+  - hostname: ephemera
+    type: nodejs@22
+    priority: 1
+    envSecrets:
+      # A Zerops Personal Access Token with access to the host project.
+      EPHEMERA_ZEROPS_TOKEN: <your-zerops-personal-access-token>
+
+      # The project that will host every ephemeral environment.
+      EPHEMERA_PROJECT_ID: <your-project-id>
+
+      # The 4-character code Zerops embeds in public subdomains — the `2c46`
+      # in `api-2c46-3000.prg1.zerops.app`. Fixed per project; read it off any
+      # existing service URL in this project.
+      EPHEMERA_PROJECT_CODE: <your-project-code>
+
+      EPHEMERA_REGION: prg1
+      DEFAULT_TTL_MINUTES: "120"
+
+      # The reaper will never destroy these, which keeps the control plane
+      # from tearing itself down.
+      PROTECTED_HOSTNAMES: ephemera,ephemeradb
+
+      # Optional. Enables pull-request comments and webhook verification.
+      # GITHUB_TOKEN: <a-github-token-with-repo-scope>
+      # GITHUB_WEBHOOK_SECRET: <a-random-string>
