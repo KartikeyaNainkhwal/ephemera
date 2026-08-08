@@ -46,7 +46,7 @@ export async function initialiseSchema(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS environments (
       id            TEXT PRIMARY KEY,
-      slug          TEXT NOT NULL UNIQUE,
+      slug          TEXT NOT NULL,
       app_hostname  TEXT NOT NULL,
       db_hostname   TEXT,
       url           TEXT NOT NULL,
@@ -64,6 +64,17 @@ export async function initialiseSchema(): Promise<void> {
       expires_at    TIMESTAMPTZ NOT NULL
     );
   `);
+
+  // A slug must be unique only among *live* environments. Destroyed records are
+  // kept for history and cost accounting, and a reopened pull request must be
+  // able to reclaim its old slug - a table-wide UNIQUE would reject that.
+  await pool.query(
+    `ALTER TABLE environments DROP CONSTRAINT IF EXISTS environments_slug_key;`,
+  );
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS environments_live_slug_idx
+       ON environments (slug) WHERE status <> 'destroyed';`,
+  );
 
   await pool.query(
     `CREATE INDEX IF NOT EXISTS environments_status_idx ON environments (status);`,
