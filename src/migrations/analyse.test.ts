@@ -187,3 +187,31 @@ test('migration paths are recognised', () => {
   assert.equal(isMigrationPath('README.md'), false);
   assert.equal(isMigrationPath('queries/report.sql'), false);
 });
+
+/* ── ADD CONSTRAINT is not ADD COLUMN ──────────────────────────────────── */
+
+test('adding a constraint is never reported as adding a column', () => {
+  // `COLUMN` is optional in the grammar, so a naive pattern matches any ADD.
+  const cases = [
+    'ALTER TABLE orders ADD CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES users (id);',
+    'ALTER TABLE users ADD PRIMARY KEY (id);',
+    'ALTER TABLE users ADD UNIQUE (email);',
+    'ALTER TABLE users ADD CONSTRAINT c CHECK (email IS NOT NULL);',
+  ];
+  for (const sql of cases) {
+    const rules = rulesOf(sql);
+    assert.ok(!rules.includes('add-column-safe'), `${sql} → add-column-safe`);
+    assert.ok(
+      !rules.includes('add-column-not-null-no-default'),
+      `${sql} → add-column-not-null-no-default`,
+    );
+  }
+});
+
+test('a genuine column addition is still detected, with or without COLUMN', () => {
+  assert.ok(rulesOf('ALTER TABLE users ADD COLUMN nickname text;').includes('add-column-safe'));
+  assert.ok(rulesOf('ALTER TABLE users ADD nickname text;').includes('add-column-safe'));
+  assert.ok(
+    rulesOf('ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname text;').includes('add-column-safe'),
+  );
+});

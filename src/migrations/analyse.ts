@@ -187,7 +187,20 @@ interface Rule {
   test: (sql: string) => { summary: string; detail: string; remedy?: string } | null;
 }
 
-const TABLE = String.raw`(?:(?:IF\s+EXISTS|ONLY)\s+)?["\w.]+`;
+/**
+ * Does this ALTER TABLE actually add a *column*?
+ *
+ * `COLUMN` is optional in PostgreSQL's grammar, so a naive `ADD\s+(COLUMN\s+)?`
+ * also matches `ADD CONSTRAINT`, `ADD PRIMARY KEY` and friends - which produced
+ * a foreign key being reported as "adds a nullable column". Anything that
+ * introduces a table constraint is explicitly excluded.
+ */
+function addsColumn(sql: string): boolean {
+  const match = /\bADD\s+(?:COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?)?(["\w]+)/i.exec(sql);
+  if (!match) return false;
+  if (/\bADD\s+COLUMN\b/i.test(sql)) return true;
+  return !/^(CONSTRAINT|PRIMARY|FOREIGN|UNIQUE|CHECK|EXCLUDE)$/i.test(match[1]!);
+}
 
 const RULES: Rule[] = [
   /* ── Table rewrites and long exclusive locks ───────────────────────── */
@@ -197,7 +210,7 @@ const RULES: Rule[] = [
     lock: 'ACCESS EXCLUSIVE',
     test: (sql) => {
       if (!/^ALTER\s+TABLE\s/i.test(sql)) return null;
-      if (!/ADD\s+(?:COLUMN\s+)?/i.test(sql)) return null;
+      if (!addsColumn(sql)) return null;
       if (!/NOT\s+NULL/i.test(sql)) return null;
       if (/DEFAULT/i.test(sql)) return null;
       return {
@@ -329,7 +342,7 @@ const RULES: Rule[] = [
     lock: 'ACCESS EXCLUSIVE',
     test: (sql) => {
       if (!/^ALTER\s+TABLE\s/i.test(sql)) return null;
-      if (!/ADD\s+(?:COLUMN\s+)?/i.test(sql)) return null;
+      if (!addsColumn(sql)) return null;
       if (!/DEFAULT\s+(?:now\(\)|current_timestamp|random\(|gen_random_uuid\(|uuid_generate)/i.test(sql)) {
         return null;
       }
@@ -459,7 +472,7 @@ const RULES: Rule[] = [
     severity: 'info',
     test: (sql) => {
       if (!/^ALTER\s+TABLE\s/i.test(sql)) return null;
-      if (!/ADD\s+(?:COLUMN\s+)?/i.test(sql)) return null;
+      if (!addsColumn(sql)) return null;
       if (/NOT\s+NULL/i.test(sql)) return null;
       if (/DEFAULT\s+(?:now\(\)|current_timestamp|random\(|gen_random_uuid\(|uuid_generate)/i.test(sql)) {
         return null;
