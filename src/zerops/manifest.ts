@@ -77,6 +77,11 @@ export interface ResolvedEnvironment {
   url: string;
   /** The Import YAML handed to `zcli project service-import`. */
   importYaml: string;
+  /**
+   * The generated `zerops.yml`, supplied to `zcli push --zerops-yaml-path`.
+   * Kept out of the user's repository entirely.
+   */
+  zeropsYaml: Record<string, unknown>;
 }
 
 /**
@@ -205,14 +210,17 @@ export function buildEnvironment(
         start: spec.startCommand ?? 'npm start',
       };
 
+  // The application service is created *empty*. Its code and build config are
+  // pushed separately (see zerops/deploy.ts), because `buildFromGit` requires
+  // a zerops.yaml committed in the repository and we refuse to demand one.
+  //
+  // `enableSubdomainAccess` is deliberately absent for the same reason it is
+  // absent from the control plane's own manifest: it is a no-op before the
+  // service has code, and is enabled after the first deploy instead.
   services.push({
     hostname: appHostname,
     type: runtime,
     priority: 1,
-    enableSubdomainAccess: true,
-    buildFromGit: gitSource(spec.repo, spec.branch),
-    zeropsSetup: setupName,
-    zeropsYaml: { zerops: [{ setup: setupName, build, run }] },
   });
 
   const importYaml = yaml.dump(
@@ -227,5 +235,6 @@ export function buildEnvironment(
     port,
     url: publicUrlFor(appHostname, port, projectCode, region),
     importYaml,
+    zeropsYaml: { zerops: [{ setup: setupName, build, run }] },
   };
 }

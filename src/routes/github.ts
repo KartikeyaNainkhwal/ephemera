@@ -18,6 +18,8 @@ import {
   destroyEnvironment,
 } from '../environments/service.js';
 import * as store from '../environments/store.js';
+import { getRepoPlan } from '../github/repos.js';
+import { inspectRepo } from '../github/inspect.js';
 import { sanitiseSlug } from '../zerops/manifest.js';
 
 interface PullRequestEvent {
@@ -26,7 +28,7 @@ interface PullRequestEvent {
   pull_request?: {
     number: number;
     title?: string;
-    head?: { ref?: string };
+    head?: { ref?: string; sha?: string };
   };
   repository?: {
     full_name?: string;
@@ -210,7 +212,31 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
     }
 
     const branch = pr.head?.ref ?? 'main';
-    const repoConfig = await fetchRepoConfig(fullName, branch);
+    const commitSha = pr.head?.sha;
+
+    // Configuration comes from the plan confirmed when the repository was
+    // connected - the repository itself needs no Ephemera files. An explicit
+    // `ephemera.json` on the branch still wins, so a project can override per
+    // branch; otherwise fall back to detecting the branch live.
+    const overrides = await fetchRepoConfig(fullName, commitSha ?? branch);
+    const stored = await getRepoPlan(fullName);
+    const plan =
+      stored ?? (await inspectRepo(fullName, commitSha ?? branch).then((i) => i.plan).catch(() => null));
+
+    const repoConfig = {
+      ...(plan
+        ? {
+            runtime: plan.runtime,
+            port: plan.port,
+            withDatabase: plan.withDatabase,
+            prepareCommands: plan.prepareCommands,
+            buildCommands: plan.buildCommands,
+            deployFiles: plan.deployFiles,
+            startCommand: plan.startCommand,
+          }
+        : {}),
+      ...overrides,
+    };
 
     try {
       const environment = await createEnvironment({
@@ -221,6 +247,9 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
         prNumber: number,
         prRepo: fullName,
         title: pr.title,
+        // Pin to the exact commit: a branch ref can move (and GitHub's raw
+        // CDN can serve a stale copy) between the webhook and the download.
+        commitSha,
         ...repoConfig,
       });
 

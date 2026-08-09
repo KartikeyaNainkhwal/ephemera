@@ -30,6 +30,10 @@ const require = createRequire(import.meta.url);
  * Invoking it through the current Node binary avoids depending on the shebang,
  * on file permissions surviving the deploy, or on anything being on PATH.
  */
+export function zcli(): { command: string; prefix: string[] } {
+  return zcliInvocation();
+}
+
 function zcliInvocation(): { command: string; prefix: string[] } {
   try {
     const launcher = require.resolve('@zerops/zcli/bin/zcli.js');
@@ -108,6 +112,24 @@ export async function serviceImport(importYaml: string): Promise<CliResult> {
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * Expose a service on its public subdomain.
+ *
+ * This must run *after* the first deploy. Setting `enableSubdomainAccess` at
+ * import time is silently a no-op for a service that has no code yet, because
+ * no ports are known until something has been built.
+ */
+export async function enableSubdomain(hostname: string): Promise<CliResult> {
+  await ensureLogin();
+  return run([
+    'service',
+    'enable-subdomain',
+    hostname,
+    '--project-id',
+    config.zerops.projectId,
+  ]);
 }
 
 /**

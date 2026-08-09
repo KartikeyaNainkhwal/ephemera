@@ -92,6 +92,10 @@ export async function initialiseSchema(): Promise<void> {
       connected_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);
+
+  // The confirmed build plan for each repository, so a pull request needs no
+  // configuration file of its own. Added separately for existing deployments.
+  await pool.query(`ALTER TABLE repos ADD COLUMN IF NOT EXISTS build_plan JSONB;`);
 }
 
 export async function closePool(): Promise<void> {

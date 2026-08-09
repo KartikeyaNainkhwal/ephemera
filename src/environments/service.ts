@@ -13,7 +13,8 @@ import { EventEmitter } from 'node:events';
 
 import { config } from '../config.js';
 import { listServices, probe } from '../zerops/client.js';
-import { serviceDelete, serviceImport } from '../zerops/cli.js';
+import { enableSubdomain, serviceDelete, serviceImport } from '../zerops/cli.js';
+import { deployFromRepo } from '../zerops/deploy.js';
 import { buildEnvironment, sanitiseSlug, type EnvironmentSpec } from '../zerops/manifest.js';
 import * as store from './store.js';
 import type { EnvironmentRecord, EnvironmentSource } from './store.js';
@@ -26,6 +27,8 @@ function announce(record: EnvironmentRecord | null): void {
 }
 
 export interface CreateInput extends EnvironmentSpec {
+  /** Exact commit to deploy. Preferred over a branch name, which can move. */
+  commitSha?: string;
   source?: EnvironmentSource;
   prNumber?: number;
   prRepo?: string;
@@ -139,9 +142,23 @@ export async function createEnvironment(
   announce(record);
 
   // Dispatch provisioning without blocking the caller.
-  void provision(record, resolved.importYaml);
+  void provision(record, resolved, {
+    repo: repoFullName(input.repo),
+    ref: input.commitSha ?? input.branch ?? 'HEAD',
+  });
 
   return record;
+}
+
+/** `https://github.com/owner/name(.git)` → `owner/name`. */
+function repoFullName(repo: string): string {
+  const match = repo.match(/github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/i);
+  if (!match) {
+    throw new Error(
+      `Only GitHub repositories are supported today. Could not read "${repo}".`,
+    );
+  }
+  return match[1]!;
 }
 
 async function insertRecord(
@@ -168,16 +185,18 @@ async function insertRecord(
 
 async function provision(
   record: EnvironmentRecord,
-  importYaml: string,
+  resolved: ReturnType<typeof buildEnvironment>,
+  source: { repo: string; ref: string },
 ): Promise<void> {
   try {
+    // 1. Create the (empty) services.
     try {
-      await serviceImport(importYaml);
+      await serviceImport(resolved.importYaml);
     } catch (error) {
       // `zcli` sometimes exits non-zero *after* the import has been accepted
       // and the services created ("last command has finished with error").
       // An exit code is not evidence; the project is. If the application
-      // service now exists, carry on and let the readiness probe decide.
+      // service now exists, carry on.
       const message = error instanceof Error ? error.message : String(error);
       const created = await serviceExists(record.appHostname);
       if (!created) throw error;
@@ -188,6 +207,26 @@ async function provision(
     }
 
     announce(await store.setStatus(record.id, 'building'));
+
+    // 2. Ship the source with a generated config, so the repository needs no
+    //    Ephemera-specific files of its own.
+    await deployFromRepo({
+      hostname: record.appHostname,
+      repo: source.repo,
+      ref: source.ref,
+      zeropsYaml: resolved.zeropsYaml,
+    });
+
+    // 3. Expose it. Only meaningful once the service has been built at least
+    //    once - before that, no ports are known and this silently does nothing.
+    try {
+      await enableSubdomain(record.appHostname);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // Already-enabled reports as an error; the readiness probe is the judge.
+      console.warn(`[ephemera] ${record.slug}: enable-subdomain: ${message.split('\n')[0]}`);
+    }
+
     await waitUntilServing(record);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

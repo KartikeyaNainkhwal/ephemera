@@ -12,6 +12,8 @@
 
 import { config } from '../config.js';
 import { pool } from '../db.js';
+import type { BuildPlan } from '../detect/detect.js';
+import { inspectRepo } from './inspect.js';
 import { normaliseRepoName } from './name.js';
 
 const GITHUB_API = 'https://api.github.com';
@@ -20,12 +22,15 @@ export interface ConnectedRepo {
   fullName: string;
   webhookId: number;
   connectedAt: string;
+  /** The confirmed build plan; pull requests use this instead of a repo file. */
+  buildPlan: BuildPlan | null;
 }
 
 interface RepoRow {
   full_name: string;
   webhook_id: string | number;
   connected_at: Date;
+  build_plan: BuildPlan | null;
 }
 
 function toRepo(row: RepoRow): ConnectedRepo {
@@ -33,6 +38,7 @@ function toRepo(row: RepoRow): ConnectedRepo {
     fullName: row.full_name,
     webhookId: Number(row.webhook_id),
     connectedAt: new Date(row.connected_at).toISOString(),
+    buildPlan: row.build_plan ?? null,
   };
 }
 
@@ -96,7 +102,10 @@ export async function listRepos(): Promise<ConnectedRepo[]> {
   return rows.map(toRepo);
 }
 
-export async function connectRepo(input: string): Promise<ConnectedRepo> {
+export async function connectRepo(
+  input: string,
+  buildPlan?: BuildPlan,
+): Promise<ConnectedRepo> {
   const fullName = normaliseRepoName(input);
   assertConfigured();
 
@@ -136,11 +145,17 @@ export async function connectRepo(input: string): Promise<ConnectedRepo> {
     webhookId = created.id;
   }
 
+  // Without an explicit plan, detect one so the repository is usable
+  // immediately rather than only after the user visits a settings screen.
+  const plan = buildPlan ?? (await inspectRepo(fullName).then((i) => i.plan).catch(() => null));
+
   const { rows } = await pool.query<RepoRow>(
-    `INSERT INTO repos (full_name, webhook_id) VALUES ($1, $2)
-     ON CONFLICT (full_name) DO UPDATE SET webhook_id = EXCLUDED.webhook_id
+    `INSERT INTO repos (full_name, webhook_id, build_plan) VALUES ($1, $2, $3)
+     ON CONFLICT (full_name) DO UPDATE
+       SET webhook_id = EXCLUDED.webhook_id,
+           build_plan = COALESCE(EXCLUDED.build_plan, repos.build_plan)
      RETURNING *`,
-    [fullName, webhookId],
+    [fullName, webhookId, plan ? JSON.stringify(plan) : null],
   );
   return toRepo(rows[0]!);
 }
@@ -164,4 +179,13 @@ export async function disconnectRepo(fullName: string): Promise<boolean> {
 
   await pool.query(`DELETE FROM repos WHERE full_name = $1`, [fullName]);
   return true;
+}
+
+/** Read a repository's stored build plan, if it has one. */
+export async function getRepoPlan(fullName: string): Promise<BuildPlan | null> {
+  const { rows } = await pool.query<RepoRow>(
+    `SELECT * FROM repos WHERE full_name = $1`,
+    [fullName],
+  );
+  return rows[0]?.build_plan ?? null;
 }

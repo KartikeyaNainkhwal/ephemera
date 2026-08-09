@@ -1,6 +1,6 @@
 {
   "name": "ephemera",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "private": true,
   "type": "module",
   "description": "Disposable, fully isolated environments on Zerops - one per pull request, one per AI agent task.",
@@ -12,7 +12,7 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test src/zerops/manifest.test.ts src/environments/cost.test.ts src/environments/validate.test.ts src/github/name.test.ts"
+    "test": "tsx --test src/zerops/manifest.test.ts src/environments/cost.test.ts src/environments/validate.test.ts src/github/name.test.ts src/detect/detect.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

@@ -142,6 +142,17 @@
 
   form.inline { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 
+  .detected {
+    margin-top: 14px; padding: 16px 18px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .detected-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 980px;
+    background: var(--good-bg); color: var(--good); border: 1px solid var(--good-line);
+  }
+  .badge.low { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+
   input[type=text], input[type=number], select, textarea {
     background: var(--card);
     border: 1px solid var(--line-strong);
@@ -329,13 +340,36 @@
   <section class="panel">
     <div class="panel-head">
       <b>Connected repositories</b>
-      <span class="hint">pull requests in these repositories receive preview environments automatically</span>
+      <span class="hint">Ephemera detects how to build each one — no config files in your repository</span>
     </div>
     <div id="repoList"><span class="hint">Loading…</span></div>
     <form class="inline" id="repoForm">
       <input type="text" id="repoInput" placeholder="owner/repository — or paste the GitHub URL" autocomplete="off" style="flex:1; min-width: 220px" />
-      <button type="submit">Connect</button>
+      <button type="submit" id="inspectBtn">Inspect</button>
     </form>
+
+    <div id="detected" class="detected" style="display:none">
+      <div class="detected-head">
+        <span class="badge" id="dFramework">—</span>
+        <span class="hint" id="dReason"></span>
+      </div>
+      <div class="form-grid" style="margin-top:12px">
+        <label>Runtime <input type="text" id="dRuntime" /></label>
+        <label>Port <input type="number" id="dPort" min="1" max="65535" /></label>
+        <label style="flex-direction:row; align-items:center; gap:9px; margin-top:20px">
+          <input type="checkbox" id="dDatabase" style="width:16px;height:16px;accent-color:#1d1d1f" /> Dedicated PostgreSQL
+        </label>
+        <label class="form-wide">Build commands <span class="hint" style="font-weight:400">(one per line)</span>
+          <textarea id="dBuild"></textarea>
+        </label>
+        <label class="form-wide">Start command <input type="text" id="dStart" /></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="confirmBtn">Connect repository</button>
+        <button type="button" class="quiet" id="cancelBtn">Cancel</button>
+        <span class="form-error" id="detectError"></span>
+      </div>
+    </div>
   </section>
 
   <section class="panel">
@@ -615,6 +649,7 @@ async function loadRepos() {
       row.className = 'repo-row';
       row.innerHTML = `
         <span class="name">${escapeHtml(repo.fullName)}</span>
+        ${repo.buildPlan ? `<span class="chip">${escapeHtml(repo.buildPlan.framework)}</span>` : ''}
         <span class="when">connected ${new Date(repo.connectedAt).toLocaleDateString()}</span>
         <button class="quiet danger">Disconnect</button>`;
       row.querySelector('button').addEventListener('click', async (event) => {
@@ -636,21 +671,81 @@ async function loadRepos() {
   }
 }
 
+/* Inspect → confirm → connect. Nothing is written to the user's repository. */
+let pendingRepo = null;
+
+function showPlan(repo, plan, docker) {
+  pendingRepo = repo;
+  const box = document.getElementById('detected');
+  const badge = document.getElementById('dFramework');
+  badge.textContent = plan.framework;
+  badge.className = 'badge' + (plan.confidence === 'low' ? ' low' : '');
+  document.getElementById('dReason').textContent =
+    plan.reason + (docker ? ' This repository also contains a Dockerfile, which Ephemera does not use.' : '');
+  document.getElementById('dRuntime').value = plan.runtime;
+  document.getElementById('dPort').value = plan.port;
+  document.getElementById('dDatabase').checked = plan.withDatabase;
+  document.getElementById('dBuild').value = (plan.buildCommands || []).join('\n');
+  document.getElementById('dStart').value = plan.startCommand;
+  document.getElementById('detectError').textContent = '';
+  box.style.display = 'block';
+}
+
 document.getElementById('repoForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const input = document.getElementById('repoInput');
   const value = input.value.trim();
   if (!value) return;
-  const response = await authed('/api/repos', {
+  const button = document.getElementById('inspectBtn');
+  button.disabled = true;
+  button.textContent = 'Inspecting…';
+  const response = await authed('/api/repos/inspect', {
     method: 'POST', body: JSON.stringify({ repo: value }),
   });
+  button.disabled = false;
+  button.textContent = 'Inspect';
+  const body = await response.json().catch(() => ({}));
+  if (response.ok) showPlan(body.repo, body.plan, body.docker);
+  else if (response.status !== 401) notify(body.error || 'Could not read that repository.', true);
+});
+
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  document.getElementById('detected').style.display = 'none';
+  pendingRepo = null;
+});
+
+document.getElementById('confirmBtn').addEventListener('click', async (event) => {
+  if (!pendingRepo) return;
+  const button = event.currentTarget;
+  const errorEl = document.getElementById('detectError');
+  errorEl.textContent = '';
+  button.disabled = true;
+  button.textContent = 'Connecting…';
+
+  const buildPlan = {
+    framework: document.getElementById('dFramework').textContent,
+    runtime: document.getElementById('dRuntime').value.trim(),
+    port: Number(document.getElementById('dPort').value) || 3000,
+    withDatabase: document.getElementById('dDatabase').checked,
+    buildCommands: document.getElementById('dBuild').value.split('\n').map((l) => l.trim()).filter(Boolean),
+    startCommand: document.getElementById('dStart').value.trim(),
+    deployFiles: ['./'],
+  };
+
+  const response = await authed('/api/repos', {
+    method: 'POST', body: JSON.stringify({ repo: pendingRepo, buildPlan }),
+  });
+  button.disabled = false;
+  button.textContent = 'Connect repository';
   const body = await response.json().catch(() => ({}));
   if (response.ok) {
-    notify(value + ' connected. Pull requests now get preview environments.');
-    input.value = '';
+    notify(pendingRepo + ' connected. Pull requests now get preview environments — no files needed in the repo.');
+    document.getElementById('detected').style.display = 'none';
+    document.getElementById('repoInput').value = '';
+    pendingRepo = null;
     loadRepos();
   } else if (response.status !== 401) {
-    notify(body.error || 'Connect failed.', true);
+    errorEl.textContent = body.error || 'Connect failed.';
   }
 });
 

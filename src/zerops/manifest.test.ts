@@ -42,6 +42,13 @@ test('publicUrlFor matches the Zerops subdomain format', () => {
   );
 });
 
+test('the generated zerops.yml is a nested object, never a string', () => {
+  const resolved = buildEnvironment(
+    { slug: 'x', repo: 'https://github.com/a/b' }, '2c46', 'prg1');
+  assert.equal(typeof resolved.zeropsYaml, 'object');
+  assert.ok(Array.isArray((resolved.zeropsYaml as { zerops: unknown[] }).zerops));
+});
+
 test('buildEnvironment produces the import shape Zerops actually accepts', () => {
   const resolved = buildEnvironment(
     { slug: 'pr42', repo: 'https://github.com/x/y.git', branch: 'main' },
@@ -64,12 +71,13 @@ test('buildEnvironment produces the import shape Zerops actually accepts', () =>
   // The database must be created before the app tries its first connection.
   assert.ok((db.priority as number) > (app.priority as number));
 
-  assert.equal(app.buildFromGit, 'https://github.com/x/y@main');
-  assert.equal(app.enableSubdomainAccess, true);
-  // zeropsYaml must be a nested object; a string fails the import parser.
-  assert.equal(typeof app.zeropsYaml, 'object');
+  // The app service is created empty: buildFromGit needs a zerops.yaml
+  // committed in the repository, which Ephemera deliberately does not require.
+  assert.equal(app.buildFromGit, undefined);
+  // Subdomain access is a no-op before the service has code; enabled after deploy.
+  assert.equal(app.enableSubdomainAccess, undefined);
 
-  const run = (app.zeropsYaml as { zerops: Array<{ run: { envVariables: Record<string, string> } }> })
+  const run = (resolved.zeropsYaml as { zerops: Array<{ run: { envVariables: Record<string, string> } }> })
     .zerops[0]!.run.envVariables;
   // A Zerops Postgres always exposes dbName/user as the literal "db".
   assert.equal(run.DB_NAME, 'db');
@@ -91,7 +99,7 @@ test('buildEnvironment without a database produces one service and no DB wiring'
   };
   assert.equal(doc.services.length, 1);
 
-  const run = (doc.services[0]!.zeropsYaml as {
+  const run = (resolved.zeropsYaml as {
     zerops: Array<{ run: { envVariables: Record<string, string> } }>;
   }).zerops[0]!.run.envVariables;
   assert.equal(run.DB_HOST, undefined);
@@ -110,7 +118,7 @@ test('a static site gets no database, no start command, and port 80', () => {
   const doc = yaml.load(resolved.importYaml) as { services: Array<Record<string, unknown>> };
   assert.equal(doc.services.length, 1);
 
-  const setup = (doc.services[0]!.zeropsYaml as {
+  const setup = (resolved.zeropsYaml as {
     zerops: Array<{ build: Record<string, unknown>; run: Record<string, unknown> }>;
   }).zerops[0]!;
   // Zerops rejects a start command on a static service.
