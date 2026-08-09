@@ -33,6 +33,39 @@ async function main(): Promise<void> {
     bodyLimit: 5 * 1024 * 1024,
   });
 
+  /**
+   * Any error escaping a route handler lands here.
+   *
+   * Fastify's default reply is a bare "Internal Server Error" with nothing
+   * logged, which is exactly the situation where you most need evidence. This
+   * logs the stack against the request id and returns that id to the caller,
+   * so a user-reported failure can be found in the logs rather than guessed at.
+   */
+  app.setErrorHandler((rawError, request, reply) => {
+    const error = rawError as Error & { statusCode?: number };
+    const status =
+      typeof error.statusCode === 'number' && error.statusCode >= 400
+        ? error.statusCode
+        : 500;
+    if (status >= 500) {
+      request.log.error(
+        { err: error, stack: error.stack, url: request.url, method: request.method },
+        'unhandled route error',
+      );
+    }
+    reply.code(status).send({
+      error:
+        status >= 500
+          ? 'Something failed on the control plane. The error has been logged.'
+          : error.message,
+      requestId: request.id,
+    });
+  });
+
+  app.setNotFoundHandler((request, reply) => {
+    reply.code(404).send({ error: `No route for ${request.method} ${request.url}.` });
+  });
+
   await initialiseSchema();
   app.log.info('schema ready');
 

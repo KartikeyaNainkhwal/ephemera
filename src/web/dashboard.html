@@ -492,6 +492,18 @@ function adminKey(forcePrompt = false) {
   return key;
 }
 
+/** Read an error message from a response whose body may not be JSON at all. */
+async function errorFrom(response) {
+  const text = await response.text().catch(() => '');
+  try {
+    const body = JSON.parse(text);
+    return (body.error || body.message || 'Request failed.') +
+      (body.requestId ? ' (ref ' + body.requestId + ')' : '');
+  } catch {
+    return text.slice(0, 200) || ('Request failed with status ' + response.status + '.');
+  }
+}
+
 async function authed(path, options = {}) {
   const key = adminKey();
   const response = await fetch(path, {
@@ -604,7 +616,7 @@ function card(env) {
     });
     button.disabled = false;
     if (response.ok) notify(env.slug + ' extended by 2 hours.');
-    else notify((await response.json()).error || 'Extend failed.', true);
+    else notify(await errorFrom(response), true);
   });
 
   el.querySelector('[data-destroy]')?.addEventListener('click', async (event) => {
@@ -619,7 +631,7 @@ function card(env) {
     button.textContent = 'Destroying…';
     const response = await authed('/api/environments/' + env.id, { method: 'DELETE' });
     if (!response.ok && response.status !== 401) {
-      notify((await response.json()).error || 'Destroy failed.', true);
+      notify(await errorFrom(response), true);
       button.disabled = false; button.textContent = 'Destroy';
     }
   });
@@ -739,7 +751,10 @@ async function loadRepos() {
         button.disabled = true;
         const response = await authed('/api/repos/' + repo.fullName, { method: 'DELETE' });
         if (response.ok) { notify(repo.fullName + ' disconnected.'); loadRepos(); }
-        else { notify((await response.json()).error || 'Disconnect failed.', true); button.disabled = false; }
+        else if (response.status !== 401) {
+          notify(await errorFrom(response), true);
+          button.disabled = false; button.textContent = 'Disconnect';
+        } else { button.disabled = false; button.textContent = 'Disconnect'; }
       });
       listEl.appendChild(row);
     }
