@@ -12,9 +12,9 @@
 
 import { config } from '../config.js';
 import { pool } from '../db.js';
+import { normaliseRepoName } from './name.js';
 
 const GITHUB_API = 'https://api.github.com';
-const FULL_NAME = /^[\w.-]+\/[\w.-]+$/;
 
 export interface ConnectedRepo {
   fullName: string;
@@ -96,10 +96,8 @@ export async function listRepos(): Promise<ConnectedRepo[]> {
   return rows.map(toRepo);
 }
 
-export async function connectRepo(fullName: string): Promise<ConnectedRepo> {
-  if (!FULL_NAME.test(fullName)) {
-    throw new Error('Repository must be given as "owner/name".');
-  }
+export async function connectRepo(input: string): Promise<ConnectedRepo> {
+  const fullName = normaliseRepoName(input);
   assertConfigured();
 
   const desired = {

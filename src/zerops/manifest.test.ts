@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import yaml from 'js-yaml';
 
-import { buildEnvironment, gitSource, publicUrlFor, sanitiseSlug } from './manifest.js';
+import { buildEnvironment, gitSource, isStaticRuntime, publicUrlFor, sanitiseSlug } from './manifest.js';
 
 test('sanitiseSlug strips everything a Zerops hostname rejects', () => {
   assert.equal(sanitiseSlug('Feature/Green-Theme'), 'featuregreentheme');
@@ -95,4 +95,35 @@ test('buildEnvironment without a database produces one service and no DB wiring'
     zerops: Array<{ run: { envVariables: Record<string, string> } }>;
   }).zerops[0]!.run.envVariables;
   assert.equal(run.DB_HOST, undefined);
+});
+
+test('a static site gets no database, no start command, and port 80', () => {
+  const resolved = buildEnvironment(
+    { slug: 'portfolio', repo: 'https://github.com/x/y', runtime: 'static' },
+    '2c46',
+    'prg1',
+  );
+  assert.equal(resolved.dbHostname, null);
+  assert.equal(resolved.port, 80);
+  assert.ok(resolved.url.includes('-80.'));
+
+  const doc = yaml.load(resolved.importYaml) as { services: Array<Record<string, unknown>> };
+  assert.equal(doc.services.length, 1);
+
+  const setup = (doc.services[0]!.zeropsYaml as {
+    zerops: Array<{ build: Record<string, unknown>; run: Record<string, unknown> }>;
+  }).zerops[0]!;
+  // Zerops rejects a start command on a static service.
+  assert.equal(setup.run.start, undefined);
+  // Nothing to build by default.
+  assert.equal(setup.build.buildCommands, undefined);
+});
+
+test('withDatabase is ignored for static sites', () => {
+  const resolved = buildEnvironment(
+    { slug: 'st', repo: 'https://github.com/x/y', runtime: 'static', withDatabase: true },
+    '2c46',
+    'prg1',
+  );
+  assert.equal(resolved.dbHostname, null);
 });

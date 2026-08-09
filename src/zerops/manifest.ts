@@ -114,6 +114,15 @@ export function publicUrlFor(
   return `https://${appHostname}-${projectCode}-${port}.${region}.zerops.app`;
 }
 
+/**
+ * A `static` service is served by Zerops' own web server. It has no start
+ * command and no application process - supplying either is invalid - so it
+ * takes a different run block from a runtime service.
+ */
+export function isStaticRuntime(runtime: string): boolean {
+  return /^static(@|$)/.test(runtime);
+}
+
 export function buildEnvironment(
   spec: EnvironmentSpec,
   projectCode: string,
@@ -121,10 +130,15 @@ export function buildEnvironment(
 ): ResolvedEnvironment {
   const slug = sanitiseSlug(spec.slug);
   const appHostname = `${slug}api`;
-  const withDatabase = spec.withDatabase ?? true;
-  const dbHostname = withDatabase ? `${slug}db` : null;
-  const port = spec.port ?? 3000;
   const runtime = spec.runtime ?? 'nodejs@20';
+  const isStatic = isStaticRuntime(runtime);
+
+  // A static site has nothing to talk to a database with, so one is never
+  // provisioned for it regardless of what was requested.
+  const withDatabase = isStatic ? false : (spec.withDatabase ?? true);
+  const dbHostname = withDatabase ? `${slug}db` : null;
+  // Zerops serves static services on port 80.
+  const port = spec.port ?? (isStatic ? 80 : 3000);
   const setupName = 'app';
 
   for (const hostname of [appHostname, dbHostname].filter(Boolean) as string[]) {
@@ -160,6 +174,37 @@ export function buildEnvironment(
     });
   }
 
+  // A static site needs no build step at all; a runtime almost always does.
+  const build: Record<string, unknown> = {
+    base: runtime,
+    ...(spec.prepareCommands?.length ? { prepareCommands: spec.prepareCommands } : {}),
+    ...(isStatic && !spec.buildCommands?.length
+      ? {}
+      : { buildCommands: spec.buildCommands ?? ['npm install'] }),
+    deployFiles: spec.deployFiles ?? ['./'],
+  };
+
+  const run: Record<string, unknown> = isStatic
+    ? {
+        base: runtime,
+        ports: [{ port, httpSupport: true }],
+        // No `start` and no injected runtime variables: a static service has
+        // no process to configure, and Zerops rejects a start command here.
+        ...(spec.env && Object.keys(spec.env).length ? { envVariables: spec.env } : {}),
+      }
+    : {
+        base: runtime,
+        ports: [{ port, httpSupport: true }],
+        envVariables: {
+          NODE_ENV: 'production',
+          PORT: String(port),
+          EPHEMERA_SLUG: slug,
+          ...dbEnv,
+          ...(spec.env ?? {}),
+        },
+        start: spec.startCommand ?? 'npm start',
+      };
+
   services.push({
     hostname: appHostname,
     type: runtime,
@@ -167,33 +212,7 @@ export function buildEnvironment(
     enableSubdomainAccess: true,
     buildFromGit: gitSource(spec.repo, spec.branch),
     zeropsSetup: setupName,
-    zeropsYaml: {
-      zerops: [
-        {
-          setup: setupName,
-          build: {
-            base: runtime,
-            ...(spec.prepareCommands?.length
-              ? { prepareCommands: spec.prepareCommands }
-              : {}),
-            buildCommands: spec.buildCommands ?? ['npm install'],
-            deployFiles: spec.deployFiles ?? ['./'],
-          },
-          run: {
-            base: runtime,
-            ports: [{ port, httpSupport: true }],
-            envVariables: {
-              NODE_ENV: 'production',
-              PORT: String(port),
-              EPHEMERA_SLUG: slug,
-              ...dbEnv,
-              ...(spec.env ?? {}),
-            },
-            start: spec.startCommand ?? 'npm start',
-          },
-        },
-      ],
-    },
+    zeropsYaml: { zerops: [{ setup: setupName, build, run }] },
   });
 
   const importYaml = yaml.dump(
