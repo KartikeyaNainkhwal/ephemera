@@ -18,7 +18,7 @@ import {
   destroyEnvironment,
 } from '../environments/service.js';
 import * as store from '../environments/store.js';
-import { getRepoPlan } from '../github/repos.js';
+import { getDeployPolicy, getRepoPlan } from '../github/repos.js';
 import { deployProduction } from '../environments/production.js';
 import { inspectRepo } from '../github/inspect.js';
 import { sanitiseSlug } from '../zerops/manifest.js';
@@ -141,6 +141,103 @@ function slugForPullRequest(fullName: string, number: number): string {
   return sanitiseSlug(`${prefix}pr${number}`);
 }
 
+/**
+ * Build the create-input for a pull request: stored plan first, live detection
+ * as a fallback, an `ephemera.json` on the branch as the final override.
+ */
+async function specForPullRequest(
+  fullName: string,
+  branch: string,
+  ref: string,
+): Promise<{ spec: Record<string, unknown>; framework: string | null }> {
+  const overrides = await fetchRepoConfig(fullName, ref);
+  const stored = await getRepoPlan(fullName);
+  const plan =
+    stored ?? (await inspectRepo(fullName, ref).then((i) => i.plan).catch(() => null));
+
+  return {
+    framework: plan?.framework ?? null,
+    spec: {
+      ...(plan
+        ? {
+            runtime: plan.runtime,
+            port: plan.port,
+            withDatabase: plan.withDatabase,
+            prepareCommands: plan.prepareCommands,
+            buildCommands: plan.buildCommands,
+            deployFiles: plan.deployFiles,
+            startCommand: plan.startCommand,
+          }
+        : {}),
+      ...overrides,
+    },
+  };
+}
+
+/**
+ * Deploy a preview because someone asked for it with `/preview`.
+ *
+ * An explicit request is authorisation, so this bypasses the policy gate - but
+ * **not** the secret rules: a fork is still untrusted and still receives none.
+ */
+async function deployOnRequest(fullName: string, number: number): Promise<void> {
+  const detail = await fetch(
+    `https://api.github.com/repos/${fullName}/pulls/${number}`,
+    {
+      headers: {
+        ...(config.github.token ? { Authorization: `Bearer ${config.github.token}` } : {}),
+        Accept: 'application/vnd.github+json',
+      },
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
+  if (!detail.ok) throw new Error(`GitHub responded ${detail.status} for PR #${number}`);
+
+  const pr = (await detail.json()) as {
+    title?: string;
+    head?: { ref?: string; sha?: string; repo?: { full_name?: string; fork?: boolean } };
+  };
+  const branch = pr.head?.ref ?? 'main';
+  const commitSha = pr.head?.sha;
+  const isFork =
+    pr.head?.repo?.fork === true ||
+    (pr.head?.repo?.full_name != null && pr.head.repo.full_name !== fullName);
+
+  const existing = await store.getByPullRequest(fullName, number);
+  if (existing) await destroyEnvironment(existing.id);
+
+  const { spec, framework } = await specForPullRequest(
+    fullName,
+    branch,
+    commitSha ?? branch,
+  );
+
+  const environment = await createEnvironment({
+    slug: slugForPullRequest(fullName, number),
+    repo: `https://github.com/${fullName}`,
+    branch,
+    commitSha,
+    trusted: !isFork,
+    source: 'github',
+    prNumber: number,
+    prRepo: fullName,
+    title: pr.title,
+    ...spec,
+  });
+
+  await comment(
+    fullName,
+    number,
+    `**Ephemera** — preview requested.\n\n**${environment.url}**\n\n` +
+      (framework ? `Detected as **${framework}**. ` : '') +
+      `It will answer as soon as the app is up.` +
+      (isFork
+        ? `\n\n> From a fork, so **no secrets were injected** — anything needing ` +
+          `an API key will not work here.`
+        : ''),
+  );
+}
+
 export async function registerGithubRoutes(app: FastifyInstance): Promise<void> {
   // Capture the raw body so webhook signatures can be verified byte-for-byte.
   //
@@ -182,10 +279,37 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
 
     const event = request.headers['x-github-event'];
     if (event === 'ping') return { ok: true, pong: true };
-    if (event !== 'pull_request') return { ok: true, ignored: event };
+    if (event !== 'pull_request' && event !== 'issue_comment') {
+      return { ok: true, ignored: event };
+    }
 
     if (isDuplicateDelivery(request.headers['x-github-delivery'])) {
       return { ok: true, duplicate: true };
+    }
+
+    // `/preview` on a pull request is the manual trigger. It keeps the reviewer
+    // inside the pull request rather than sending them to a dashboard, and it
+    // is how a fork gets deployed under the default policy.
+    if (event === 'issue_comment') {
+      const payload = request.body as {
+        action?: string;
+        comment?: { body?: string };
+        issue?: { number?: number; pull_request?: unknown };
+        repository?: { full_name?: string };
+      };
+      if (payload.action !== 'created') return { ok: true, ignored: payload.action };
+      if (!payload.issue?.pull_request) return { ok: true, ignored: 'not a pull request' };
+      if (!/^\s*\/preview\b/i.test(payload.comment?.body ?? '')) {
+        return { ok: true, ignored: 'no command' };
+      }
+      const repoName = payload.repository?.full_name;
+      const prNumber = payload.issue?.number;
+      if (!repoName || !prNumber) return { ok: true, ignored: 'incomplete payload' };
+
+      void deployOnRequest(repoName, prNumber).catch((error) =>
+        console.error('[ephemera] /preview failed:', error),
+      );
+      return reply.code(202).send({ ok: true, command: 'preview' });
     }
 
     const payload = request.body as PullRequestEvent;
@@ -242,6 +366,32 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
 
     if (!['opened', 'reopened', 'synchronize'].includes(action)) {
       return { ok: true, ignored: action };
+    }
+
+    // Decide whether this pull request should deploy at all.
+    const policy = await getDeployPolicy(fullName);
+    const isFork =
+      pr.head?.repo?.fork === true ||
+      (pr.head?.repo?.full_name != null && pr.head.repo.full_name !== fullName);
+
+    const shouldDeploy =
+      policy === 'auto' || (policy === 'trusted' && !isFork);
+
+    if (!shouldDeploy) {
+      // Only explain once, when the pull request opens - not on every push.
+      if (action === 'opened') {
+        await comment(
+          fullName,
+          number,
+          `**Ephemera** — preview not created automatically.\n\n` +
+            (policy === 'manual'
+              ? `This repository is set to **manual** previews.`
+              : `This pull request comes from a fork, and forks are not deployed ` +
+                `automatically — their build runs code that has not been reviewed.`) +
+            `\n\nComment \`/preview\` to create one.`,
+        );
+      }
+      return { ok: true, skipped: policy, fork: isFork };
     }
 
     // A push to an open pull request replaces the existing environment so the

@@ -12,7 +12,14 @@ import type { FastifyInstance } from 'fastify';
 import type { BuildPlan } from '../detect/detect.js';
 import { inspectRepo } from '../github/inspect.js';
 import { normaliseRepoName } from '../github/name.js';
-import { connectRepo, disconnectRepo, listRepos } from '../github/repos.js';
+import {
+  connectRepo,
+  DEPLOY_POLICIES,
+  disconnectRepo,
+  listRepos,
+  setDeployPolicy,
+  type DeployPolicy,
+} from '../github/repos.js';
 import { allowMutation, requireKey, requireRead } from '../security.js';
 
 /** Accept a user-edited plan, keeping only fields we recognise. */
@@ -79,6 +86,21 @@ export async function registerRepoRoutes(app: FastifyInstance): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       return reply.code(400).send({ error: message });
     }
+  });
+
+  /** Change how pull requests in this repository are handled. */
+  app.patch('/api/repos/:owner/:name', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
+    const { owner, name } = request.params as { owner: string; name: string };
+    const policy = (request.body as { deployPolicy?: unknown } | null)?.deployPolicy;
+    if (!DEPLOY_POLICIES.includes(policy as DeployPolicy)) {
+      return reply
+        .code(400)
+        .send({ error: `"deployPolicy" must be one of: ${DEPLOY_POLICIES.join(', ')}.` });
+    }
+    const repo = await setDeployPolicy(`${owner}/${name}`, policy as DeployPolicy);
+    if (!repo) return reply.code(404).send({ error: 'Repository is not connected.' });
+    return repo;
   });
 
   app.delete('/api/repos/:owner/:name', async (request, reply) => {

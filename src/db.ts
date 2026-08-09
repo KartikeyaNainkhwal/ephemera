@@ -97,6 +97,12 @@ export async function initialiseSchema(): Promise<void> {
   // configuration file of its own. Added separately for existing deployments.
   await pool.query(`ALTER TABLE repos ADD COLUMN IF NOT EXISTS build_plan JSONB;`);
 
+  // How pull requests in this repository are handled. Defaults to `trusted`:
+  // own branches deploy automatically, forks require an explicit request.
+  await pool.query(
+    `ALTER TABLE repos ADD COLUMN IF NOT EXISTS deploy_policy TEXT NOT NULL DEFAULT 'trusted';`,
+  );
+
   // Per-repository secrets, encrypted at rest. Scope decides whether a value
   // reaches production, previews, or both; phase decides build vs runtime.
   await pool.query(`

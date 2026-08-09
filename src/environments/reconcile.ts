@@ -25,10 +25,12 @@ import * as store from './store.js';
 export interface ReconcileResult {
   removed: string[];
   stillPresent: string[];
+  /** Records marked destroyed because their services are confirmed gone. */
+  healed: string[];
 }
 
 export async function reconcileOrphans(): Promise<ReconcileResult> {
-  const result: ReconcileResult = { removed: [], stillPresent: [] };
+  const result: ReconcileResult = { removed: [], stillPresent: [], healed: [] };
 
   const [records, services] = await Promise.all([
     store.listAll(500),
@@ -51,6 +53,23 @@ export async function reconcileOrphans(): Promise<ReconcileResult> {
         ? shouldBeGone
         : mustKeep;
     for (const hostname of hostnames) target.add(hostname);
+  }
+
+  // A `failed` teardown whose services are actually gone is finished - it just
+  // never got the news. Left alone it occupies a capacity slot forever.
+  for (const record of records) {
+    if (record.status !== 'failed') continue;
+    const hostnames = [record.appHostname, record.dbHostname].filter(
+      Boolean,
+    ) as string[];
+    if (hostnames.length === 0) continue;
+    if (hostnames.some((hostname) => present.has(hostname))) continue;
+    // Only heal teardowns, never a failed *build* - that record is evidence.
+    if (record.destroyedAt === null && !/teardown|still present/i.test(record.error ?? '')) {
+      continue;
+    }
+    await store.setStatus(record.id, 'destroyed');
+    result.healed.push(record.slug);
   }
 
   for (const hostname of shouldBeGone) {

@@ -158,6 +158,10 @@
   .card.production .slug::before { content: '◆ '; color: var(--link); }
 
   .repo-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+  .repo-actions select { font-size: 12.5px; padding: 6px 10px; border-radius: 980px;
+                         border: 1px solid var(--line-strong); background: var(--card);
+                         color: var(--ink-2); }
+  .repo-actions select:hover { color: var(--ink); }
   .secrets { margin-top: 12px; padding: 14px 16px; background: var(--bg);
              border: 1px solid var(--line); border-radius: 12px; }
   .secret-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px;
@@ -358,7 +362,7 @@
   <section class="panel">
     <div class="panel-head">
       <b>Connected repositories</b>
-      <span class="hint">Ephemera detects how to build each one — no config files in your repository</span>
+      <span class="hint">Ephemera detects how to build each one — no config files in your repository. Forks need <code>/preview</code> by default.</span>
     </div>
     <div id="repoList"><span class="hint">Loading…</span></div>
     <form class="inline" id="repoForm">
@@ -722,10 +726,38 @@ async function loadRepos() {
         ${repo.buildPlan ? `<span class="chip">${escapeHtml(repo.buildPlan.framework)}</span>` : ''}
         <span class="when">connected ${new Date(repo.connectedAt).toLocaleDateString()}</span>
         <span class="repo-actions">
+          <select data-policy title="How pull requests in this repository are handled">
+            <option value="auto">Preview every PR</option>
+            <option value="trusted">Auto, forks on request</option>
+            <option value="manual">Only on /preview</option>
+          </select>
           <button class="quiet" data-secrets>Secrets${repo.secretCount ? ' (' + repo.secretCount + ')' : ''}</button>
           <button class="quiet" data-deploy>Deploy production</button>
           <button class="quiet danger" data-disconnect>Disconnect</button>
         </span>`;
+
+      const policySelect = row.querySelector('[data-policy]');
+      policySelect.value = repo.deployPolicy || 'trusted';
+      policySelect.addEventListener('change', async (event) => {
+        const select = event.currentTarget;
+        const previous = repo.deployPolicy;
+        select.disabled = true;
+        const response = await authed('/api/repos/' + repo.fullName, {
+          method: 'PATCH', body: JSON.stringify({ deployPolicy: select.value }),
+        });
+        select.disabled = false;
+        if (response.ok) {
+          repo.deployPolicy = select.value;
+          notify(repo.fullName + ': ' + ({
+            auto: 'every pull request will get a preview, forks included.',
+            trusted: 'own branches auto-deploy; forks must comment /preview.',
+            manual: 'nothing deploys until someone comments /preview.',
+          })[select.value]);
+        } else {
+          select.value = previous || 'trusted';
+          if (response.status !== 401) notify(await errorFrom(response), true);
+        }
+      });
 
       row.querySelector('[data-secrets]').addEventListener('click', () => {
         toggleSecrets(repo.fullName, row);

@@ -13,6 +13,19 @@
 import { config } from '../config.js';
 import { pool } from '../db.js';
 import type { BuildPlan } from '../detect/detect.js';
+
+/**
+ * How pull requests are handled for a repository.
+ *
+ *  - `auto`    every pull request gets an environment, forks included.
+ *  - `trusted` (default) own branches deploy automatically; a fork must be
+ *              requested explicitly. This mirrors Vercel's fork protection:
+ *              a fork's build script is code nobody has reviewed, and running
+ *              it unasked is a decision the repository owner should make.
+ *  - `manual`  nothing deploys until someone comments `/preview`.
+ */
+export type DeployPolicy = 'auto' | 'trusted' | 'manual';
+export const DEPLOY_POLICIES: DeployPolicy[] = ['auto', 'trusted', 'manual'];
 import { inspectRepo } from './inspect.js';
 import { normaliseRepoName } from './name.js';
 
@@ -26,6 +39,7 @@ export interface ConnectedRepo {
   buildPlan: BuildPlan | null;
   /** How many secrets are stored, so the UI can show it without exposing them. */
   secretCount?: number;
+  deployPolicy: DeployPolicy;
 }
 
 interface RepoRow {
@@ -33,6 +47,7 @@ interface RepoRow {
   webhook_id: string | number;
   connected_at: Date;
   build_plan: BuildPlan | null;
+  deploy_policy: DeployPolicy;
 }
 
 function toRepo(row: RepoRow): ConnectedRepo {
@@ -41,6 +56,7 @@ function toRepo(row: RepoRow): ConnectedRepo {
     webhookId: Number(row.webhook_id),
     connectedAt: new Date(row.connected_at).toISOString(),
     buildPlan: row.build_plan ?? null,
+    deployPolicy: row.deploy_policy ?? 'trusted',
   };
 }
 
@@ -132,7 +148,7 @@ export async function connectRepo(
     // Adopt the hook and normalise it so its secret and events match ours.
     await github(`/repos/${fullName}/hooks/${existing.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ active: true, events: ['pull_request'], config: desired }),
+      body: JSON.stringify({ active: true, events: ['pull_request', 'issue_comment'], config: desired }),
     });
     webhookId = existing.id;
   } else {
@@ -141,7 +157,7 @@ export async function connectRepo(
       body: JSON.stringify({
         name: 'web',
         active: true,
-        events: ['pull_request'],
+        events: ['pull_request', 'issue_comment'],
         config: desired,
       }),
     });
@@ -191,4 +207,25 @@ export async function getRepoPlan(fullName: string): Promise<BuildPlan | null> {
     [fullName],
   );
   return rows[0]?.build_plan ?? null;
+}
+
+/** Change how a repository's pull requests are handled. */
+export async function setDeployPolicy(
+  fullName: string,
+  policy: DeployPolicy,
+): Promise<ConnectedRepo | null> {
+  const { rows } = await pool.query<RepoRow>(
+    `UPDATE repos SET deploy_policy = $2 WHERE full_name = $1 RETURNING *`,
+    [fullName, policy],
+  );
+  return rows[0] ? toRepo(rows[0]) : null;
+}
+
+/** Read a repository's deploy policy, defaulting to the safe one. */
+export async function getDeployPolicy(fullName: string): Promise<DeployPolicy> {
+  const { rows } = await pool.query<RepoRow>(
+    `SELECT * FROM repos WHERE full_name = $1`,
+    [fullName],
+  );
+  return rows[0]?.deploy_policy ?? 'trusted';
 }
