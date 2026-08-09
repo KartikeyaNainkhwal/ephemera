@@ -42,59 +42,82 @@
 
   /* ── masthead ─────────────────────────────────────────────── */
   header {
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
-    padding: 26px 36px 22px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
     display: flex;
     align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
+    gap: 16px;
+    padding: 0 36px;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--line);
   }
   .wordmark {
     font-family: var(--serif);
     font-style: italic;
     font-weight: 600;
-    font-size: 26px;
+    font-size: 22px;
     letter-spacing: -0.01em;
     line-height: 1;
+    white-space: nowrap;
+  }
+  .rule {
+    width: 1px;
+    height: 20px;
+    background: var(--line-strong);
+    flex: none;
   }
   .tagline {
     color: var(--ink-2);
     font-size: 13.5px;
-    margin: 6px 0 0;
-    max-width: 52ch;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
-  nav.links { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+  nav.links {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex: none;
+  }
   nav.links a {
     color: var(--ink-2); font-size: 13px; text-decoration: none;
-    padding-bottom: 1px; border-bottom: 1px solid transparent;
+    padding-bottom: 2px; border-bottom: 1px solid transparent;
+    transition: color .15s, border-color .15s;
   }
   nav.links a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
   .live {
     display: inline-flex; align-items: center; gap: 7px;
     font-size: 12px; color: var(--ink-2);
     border: 1px solid var(--line); border-radius: 980px;
-    padding: 5px 12px; background: var(--card);
+    padding: 4px 11px; background: var(--card);
+    margin-left: 4px;
   }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); flex: none; }
   .dot.on { background: var(--good); animation: breathe 2.4s ease-in-out infinite; }
   @keyframes breathe { 50% { opacity: .45; } }
 
-  .how {
-    margin: 0; padding: 13px 36px;
-    color: var(--ink-2); font-size: 13px;
-    background: var(--card);
-    border-bottom: 1px solid var(--line);
+  /* The tagline is the first thing to go when space is tight - the links
+     and the live indicator are what a returning user actually needs. */
+  @media (max-width: 900px) {
+    header { padding: 0 20px; gap: 12px; }
+    .rule, .tagline { display: none; }
   }
-  .how b { color: var(--ink); font-weight: 600; }
-  .how .sep { margin: 0 10px; color: var(--ink-3); }
+  @media (max-width: 560px) {
+    nav.links a { display: none; }
+  }
 
   /* ── stat row ─────────────────────────────────────────────── */
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
-    padding: 26px 36px 6px;
+    padding: 28px 36px 6px;
     max-width: 1280px; margin: 0 auto;
   }
   .stat {
@@ -231,11 +254,15 @@
     background: var(--card);
     border: 1px dashed var(--line-strong);
     border-radius: 14px;
-    padding: 44px 24px;
+    padding: 40px 28px;
     text-align: center;
     color: var(--ink-2);
     font-size: 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
   }
+  .empty b { color: var(--ink); font-weight: 600; }
+  .empty .flow { max-width: 62ch; line-height: 1.7; }
+  .empty .flow i { font-style: normal; color: var(--ink-3); margin: 0 9px; }
 
   /* ── environment cards ────────────────────────────────────── */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 16px; }
@@ -332,10 +359,9 @@
 </head>
 <body>
 <header>
-  <div>
-    <div class="wordmark">Ephemera</div>
-    <p class="tagline">Disposable, fully isolated environments on Zerops — one per pull request, one per agent task.</p>
-  </div>
+  <span class="wordmark">Ephemera</span>
+  <span class="rule" aria-hidden="true"></span>
+  <span class="tagline">Every pull request gets a live app with its own PostgreSQL</span>
   <nav class="links">
     <a href="https://github.com/KartikeyaNainkhwal/ephemera" target="_blank" rel="noopener">Source</a>
     <a href="https://github.com/KartikeyaNainkhwal/ephemera#http-api" target="_blank" rel="noopener">API</a>
@@ -344,12 +370,6 @@
   </nav>
 </header>
 
-<p class="how">
-  <b>Connect a repository</b><span class="sep">→</span>its default branch becomes
-  <b>production</b>, and every pull request gets its own live app with
-  <b>its own PostgreSQL</b><span class="sep">→</span>review it, then
-  <b>approve or reject right here</b> — merging redeploys production automatically.
-</p>
 
 <section class="stats">
   <div class="stat"><div class="k">Live environments</div><div class="v" id="sLive">0</div></div>
@@ -437,8 +457,13 @@
   </section>
 
   <div id="empty" class="empty" style="display:none">
-    No live environments. Connect a repository and open a pull request,
-    create one with the form above, or let an agent do it over MCP.
+    <b>Nothing running yet.</b>
+    <span class="flow">
+      Connect a repository<i>→</i>its default branch becomes <b>production</b><i>→</i>every
+      pull request gets its own live app with <b>its own PostgreSQL</b><i>→</i>approve or
+      reject it here, and merging redeploys production.
+    </span>
+    <span class="hint">Or build any public repository on demand with the form above — agents can do the same over MCP.</span>
   </div>
   <div class="grid" id="grid"></div>
 
