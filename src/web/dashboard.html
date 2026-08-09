@@ -6,183 +6,302 @@
 <title>Ephemera — disposable environments on Zerops</title>
 <style>
   :root {
-    color-scheme: dark;
-    --bg: #0b0e14;
-    --panel: #141922;
-    --panel-2: #1b212c;
-    --line: #262e3b;
-    --text: #e6edf7;
-    --muted: #8b98ad;
-    --accent: #5eead4;
-    --accent-dim: #134e4a;
-    --amber: #fbbf24;
-    --red: #f87171;
-    --blue: #60a5fa;
-    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    color-scheme: light;
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --ink: #1d1d1f;
+    --ink-2: #6e6e73;
+    --ink-3: #a1a1a6;
+    --line: #e8e8ed;
+    --line-strong: #d2d2d7;
+    --link: #256abf;
+    --good: #008300;
+    --good-bg: #eaf4ea;
+    --good-line: #cfe6cf;
+    --warn: #8a5a00;
+    --warn-bg: #faf1dc;
+    --warn-line: #eddfba;
+    --bad: #b42318;
+    --bad-bg: #fdecea;
+    --bad-line: #f5cdc8;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
+    --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
   }
   * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
-    color: var(--text);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink);
+    font: 15px/1.6 var(--sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
-  header {
-    border-bottom: 1px solid var(--line);
-    padding: 22px 28px 16px;
-    display: flex;
-    align-items: flex-start;
-    gap: 18px;
-    flex-wrap: wrap;
-    background: linear-gradient(180deg, #101520, var(--bg));
-  }
-  h1 { margin: 0; font-size: 19px; letter-spacing: -0.01em; font-weight: 650; }
-  h1 span { color: var(--accent); }
-  .tagline { color: var(--muted); font-size: 13.5px; margin: 3px 0 0; }
-  nav.links { margin-left: auto; display: flex; gap: 14px; align-items: center; }
-  nav.links a { color: var(--muted); font-size: 13px; text-decoration: none; }
-  nav.links a:hover { color: var(--text); }
-  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px;
-          color: var(--muted); font-family: var(--mono); }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background .3s; }
-  .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-  .how {
-    margin: 0; padding: 10px 28px; color: var(--muted); font-size: 13px;
-    border-bottom: 1px solid var(--line); background: var(--bg);
-  }
-  .how b { color: var(--text); font-weight: 600; }
+  a { color: inherit; }
 
+  /* ── masthead ─────────────────────────────────────────────── */
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 26px 36px 22px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .wordmark {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  .tagline {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    margin: 6px 0 0;
+    max-width: 52ch;
+  }
+  nav.links { margin-left: auto; display: flex; gap: 22px; align-items: center; }
+  nav.links a {
+    color: var(--ink-2); font-size: 13px; text-decoration: none;
+    padding-bottom: 1px; border-bottom: 1px solid transparent;
+  }
+  nav.links a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
+  .live {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 980px;
+    padding: 5px 12px; background: var(--card);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+  .dot.on { background: var(--good); animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .45; } }
+
+  .how {
+    margin: 0; padding: 13px 36px;
+    color: var(--ink-2); font-size: 13px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+  }
+  .how b { color: var(--ink); font-weight: 600; }
+  .how .sep { margin: 0 10px; color: var(--ink-3); }
+
+  /* ── stat row ─────────────────────────────────────────────── */
   .stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 26px 36px 6px;
+    max-width: 1280px; margin: 0 auto;
   }
-  .stat { background: var(--bg); padding: 16px 28px; }
-  .stat .k { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
-  .stat .v { font-size: 25px; font-family: var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px 15px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
+  }
+  .stat .k {
+    color: var(--ink-2); font-size: 12px; font-weight: 500;
+  }
+  .stat .v {
+    font-size: 27px; font-weight: 650; letter-spacing: -0.02em;
+    margin-top: 2px;
+  }
+  .stat .v small { font-size: 15px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
 
-  main { padding: 24px 28px 60px; display: flex; flex-direction: column; gap: 18px; }
+  main {
+    padding: 20px 36px 64px;
+    max-width: 1280px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 18px;
+  }
 
+  /* ── panels ───────────────────────────────────────────────── */
   .panel {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 16px 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
   }
-  .panel-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .panel-head b { font-size: 14.5px; }
-  .hint { color: var(--muted); font-size: 12.5px; }
+  .panel-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .panel-head b { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .hint { color: var(--ink-2); font-size: 12.5px; }
 
   .repo-row {
-    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-    border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px;
-    background: var(--panel-2);
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--line);
   }
-  .repo-row .name { font-family: var(--mono); font-size: 13px; }
-  .repo-row .when { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .repo-row:last-of-type { border-bottom: 0; }
+  .repo-row .name { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .repo-row .when { color: var(--ink-3); font-size: 12px; margin-left: auto; }
 
-  form.inline { display: flex; gap: 10px; flex-wrap: wrap; }
+  form.inline { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
   input[type=text], input[type=number], select, textarea {
-    background: #0f131b; border: 1px solid var(--line); color: var(--text);
-    padding: 9px 12px; border-radius: 8px; font-size: 14px; font-family: inherit;
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    padding: 9px 13px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
   }
-  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
-  textarea { font-family: var(--mono); font-size: 12.5px; min-height: 54px; resize: vertical; }
-  button {
-    background: var(--accent); color: #04211c; border: 0; font-weight: 650;
-    padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(29,29,31,.08);
   }
-  button.quiet {
-    background: transparent; color: var(--muted); border: 1px solid var(--line);
-    font-weight: 500; font-size: 12.5px; padding: 6px 11px; border-radius: 7px;
-  }
-  button.quiet:hover { color: var(--text); }
-  button.danger:hover { color: var(--red); border-color: #6d2525; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
+  textarea { font-family: var(--mono); font-size: 12.5px; min-height: 56px; resize: vertical; }
+  ::placeholder { color: var(--ink-3); }
 
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
-  .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+  button {
+    background: var(--ink);
+    color: #fff;
+    border: 0;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 9px 18px;
+    border-radius: 980px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .85; }
+  button.quiet {
+    background: var(--card);
+    color: var(--ink-2);
+    border: 1px solid var(--line-strong);
+    font-size: 12.5px;
+    padding: 6px 13px;
+  }
+  button.quiet:hover { color: var(--ink); opacity: 1; border-color: var(--ink-3); }
+  button.danger:hover { color: var(--bad); border-color: var(--bad-line); background: var(--bad-bg); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
   .form-wide { grid-column: 1 / -1; }
-  .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
-  .form-error { color: var(--red); font-size: 12.5px; white-space: pre-wrap; font-family: var(--mono); }
+  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+  .form-error { color: var(--bad); font-size: 12.5px; white-space: pre-wrap; }
+
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  summary .disclose { color: var(--ink-3); font-size: 11px; margin-right: 8px; display: inline-block; transition: transform .15s; }
+  details[open] summary .disclose { transform: rotate(90deg); }
 
   .empty {
-    border: 1px dashed var(--line); border-radius: 12px; padding: 40px 24px;
-    text-align: center; color: var(--muted);
+    background: var(--card);
+    border: 1px dashed var(--line-strong);
+    border-radius: 14px;
+    padding: 44px 24px;
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 14px;
   }
 
+  /* ── environment cards ────────────────────────────────────── */
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 16px; }
   .card {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-    padding: 18px; display: flex; flex-direction: column; gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 13px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
   }
   .card-top { display: flex; align-items: center; gap: 10px; }
-  .slug { font-family: var(--mono); font-size: 14.5px; font-weight: 600; }
+  .slug { font-family: var(--mono); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
   .pill {
-    margin-left: auto; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
-    padding: 4px 9px; border-radius: 999px; font-weight: 600; border: 1px solid transparent;
+    margin-left: auto;
+    font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 980px;
+    border: 1px solid var(--line);
+    color: var(--ink-2); background: var(--bg);
   }
-  .pill.creating, .pill.building { color: var(--amber); background: #3b2f0b; border-color: #63500f; }
-  .pill.ready { color: var(--accent); background: var(--accent-dim); border-color: #1c6f68; }
-  .pill.failed { color: var(--red); background: #3f1717; border-color: #6d2525; }
-  .pill.destroying, .pill.destroyed { color: var(--muted); background: var(--panel-2); border-color: var(--line); }
+  .pill.ready { color: var(--good); background: var(--good-bg); border-color: var(--good-line); }
+  .pill.creating, .pill.building { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+  .pill.failed { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-line); }
 
-  .title { color: var(--muted); font-size: 13px; margin: -4px 0 0; }
-  .url { font-family: var(--mono); font-size: 12.5px; color: var(--blue); text-decoration: none; word-break: break-all; }
+  .title { color: var(--ink-2); font-size: 13px; margin: -5px 0 0; }
+  .url {
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--link); text-decoration: none; word-break: break-all;
+  }
   .url:hover { text-decoration: underline; }
-  .url.pending { color: var(--muted); pointer-events: none; }
+  .url.pending { color: var(--ink-3); pointer-events: none; }
 
   .services { display: flex; gap: 7px; flex-wrap: wrap; }
   .chip {
-    font-family: var(--mono); font-size: 11.5px; background: var(--panel-2);
-    border: 1px solid var(--line); padding: 3px 8px; border-radius: 6px; color: var(--muted);
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--bg); border: 1px solid var(--line);
+    padding: 3px 9px; border-radius: 7px; color: var(--ink-2);
   }
-  .chip b { color: var(--text); font-weight: 600; }
+  .chip b { color: var(--ink); font-weight: 600; }
 
-  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-          border-top: 1px solid var(--line); padding-top: 12px; }
-  .meta div { font-size: 11.5px; color: var(--muted); }
-  .meta .mv { display: block; font-family: var(--mono); font-size: 14px; color: var(--text);
-              margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    border-top: 1px solid var(--line); padding-top: 13px;
+  }
+  .meta div { font-size: 11.5px; color: var(--ink-2); }
+  .meta .mv {
+    display: block; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
+    margin-top: 3px; font-variant-numeric: tabular-nums;
+  }
 
   .err {
-    font-size: 12.5px; color: var(--red); background: #2a1414; border: 1px solid #542020;
-    padding: 9px 11px; border-radius: 7px; word-break: break-word;
+    font-size: 12.5px; color: var(--bad);
+    background: var(--bad-bg); border: 1px solid var(--bad-line);
+    padding: 10px 12px; border-radius: 10px; word-break: break-word;
   }
   .err details { margin-top: 6px; }
-  .err summary { cursor: pointer; color: #d99; font-size: 11.5px; }
-  .err pre { margin: 6px 0 0; font-size: 11px; white-space: pre-wrap; color: #caa;
+  .err summary { cursor: pointer; color: #9d5049; font-size: 11.5px; }
+  .err pre { margin: 6px 0 0; font-size: 11px; white-space: pre-wrap; color: #7c4a44;
              max-height: 160px; overflow: auto; }
   .card-actions { display: flex; gap: 8px; }
 
+  /* ── history ──────────────────────────────────────────────── */
+  details.history { background: transparent; }
   details.history summary {
-    cursor: pointer; color: var(--muted); font-size: 13.5px; padding: 4px 2px;
+    color: var(--ink-2); font-size: 13.5px; padding: 4px 2px;
   }
   .hrow {
-    display: grid; grid-template-columns: minmax(110px,1fr) 2fr 90px 90px 130px;
-    gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line);
-    font-size: 12.5px; color: var(--muted);
+    display: grid; grid-template-columns: minmax(120px,1fr) 2fr 80px 90px 120px;
+    gap: 12px; align-items: center; padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
   }
-  .hrow b { font-family: var(--mono); color: var(--text); font-weight: 600; }
+  .hrow b { font-family: var(--mono); color: var(--ink); font-weight: 600; }
   .hrow .mono { font-family: var(--mono); }
-  @media (max-width: 700px) { .hrow { grid-template-columns: 1fr 90px 90px; } .hrow .hide-sm { display: none; } }
+  @media (max-width: 700px) { .hrow { grid-template-columns: 1fr 80px 90px; } .hrow .hide-sm { display: none; } }
 
   #toast {
-    position: fixed; right: 20px; bottom: 20px; max-width: 380px;
-    background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-    color: var(--text); padding: 12px 16px; border-radius: 9px; font-size: 13.5px;
+    position: fixed; right: 24px; bottom: 24px; max-width: 400px;
+    background: var(--ink); color: #fff;
+    padding: 13px 18px; border-radius: 12px; font-size: 13.5px;
+    box-shadow: 0 8px 24px rgba(29,29,31,.18);
     opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none;
     white-space: pre-wrap;
   }
   #toast.show { opacity: 1; transform: none; }
-  #toast.error { border-left-color: var(--red); }
+  #toast.error { background: var(--bad); }
 
-  footer { padding: 0 28px 40px; color: var(--muted); font-size: 12px; }
+  footer {
+    padding: 0 36px 48px; color: var(--ink-3); font-size: 12px;
+    max-width: 1280px; margin: 0 auto;
+  }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Ephem<span>era</span></h1>
+    <div class="wordmark">Ephemera</div>
     <p class="tagline">Disposable, fully isolated environments on Zerops — one per pull request, one per agent task.</p>
   </div>
   <nav class="links">
@@ -193,13 +312,15 @@
   </nav>
 </header>
 
-<p class="how"><b>How it works:</b> connect a repository → every pull request gets a live app
-with <b>its own PostgreSQL</b> at a predictable URL in ~90 seconds → closing the PR destroys it.
-Agents get the same power over MCP.</p>
+<p class="how">
+  <b>Connect a repository</b><span class="sep">→</span>every pull request gets a live app
+  with <b>its own PostgreSQL</b> in about ninety seconds<span class="sep">→</span>closing
+  the pull request destroys it. Agents get the same power over MCP.
+</p>
 
 <section class="stats">
   <div class="stat"><div class="k">Live environments</div><div class="v" id="sLive">0</div></div>
-  <div class="stat"><div class="k">Burn rate</div><div class="v" id="sBurn">$0.0000/h</div></div>
+  <div class="stat"><div class="k">Burn rate</div><div class="v" id="sBurn">$0.0000<small>/h</small></div></div>
   <div class="stat"><div class="k">Total spend</div><div class="v" id="sSpend">$0.00000</div></div>
   <div class="stat"><div class="k">Fastest provision</div><div class="v" id="sFast">—</div></div>
 </section>
@@ -208,7 +329,7 @@ Agents get the same power over MCP.</p>
   <section class="panel">
     <div class="panel-head">
       <b>Connected repositories</b>
-      <span class="hint">pull requests in these repositories get preview environments automatically</span>
+      <span class="hint">pull requests in these repositories receive preview environments automatically</span>
     </div>
     <div id="repoList"><span class="hint">Loading…</span></div>
     <form class="inline" id="repoForm">
@@ -219,11 +340,11 @@ Agents get the same power over MCP.</p>
 
   <section class="panel">
     <details>
-      <summary style="cursor:pointer"><b>New environment</b> <span class="hint">— build any public repository on demand</span></summary>
-      <form id="createForm" style="margin-top:14px">
+      <summary><span class="disclose">▶</span><b>New environment</b> <span class="hint">— build any public repository on demand</span></summary>
+      <form id="createForm" style="margin-top:16px">
         <div class="form-grid">
           <label>Slug <input type="text" name="slug" placeholder="mytest" required /></label>
-          <label>Repository URL <input type="text" name="repo" placeholder="https://github.com/owner/name" required class="form-wide" /></label>
+          <label class="form-wide">Repository URL <input type="text" name="repo" placeholder="https://github.com/owner/name" required /></label>
           <label>Branch <input type="text" name="branch" placeholder="(default branch)" /></label>
           <label>Runtime
             <select name="runtime">
@@ -236,19 +357,19 @@ Agents get the same power over MCP.</p>
             </select>
           </label>
           <label>Port <input type="number" name="port" value="3000" min="1" max="65535" /></label>
-          <label>TTL
+          <label>Lifetime
             <select name="ttlMinutes">
               <option value="120">2 hours</option>
               <option value="240">4 hours</option>
               <option value="1440">24 hours</option>
             </select>
           </label>
-          <label class="form-wide">Build commands <span class="hint">(one per line; default: npm install)</span>
+          <label class="form-wide">Build commands <span class="hint" style="font-weight:400">(one per line — defaults to npm install)</span>
             <textarea name="buildCommands" placeholder="npm install"></textarea>
           </label>
           <label>Start command <input type="text" name="startCommand" placeholder="npm start" /></label>
-          <label style="flex-direction:row; align-items:center; gap:8px; margin-top:18px">
-            <input type="checkbox" name="withDatabase" checked style="width:16px;height:16px" /> Dedicated PostgreSQL
+          <label style="flex-direction:row; align-items:center; gap:9px; margin-top:20px">
+            <input type="checkbox" name="withDatabase" checked style="width:16px;height:16px;accent-color:#1d1d1f" /> Dedicated PostgreSQL
           </label>
         </div>
         <div class="form-actions">
@@ -266,14 +387,14 @@ Agents get the same power over MCP.</p>
   <div class="grid" id="grid"></div>
 
   <details class="history">
-    <summary>History (<span id="histCount">0</span> destroyed)</summary>
+    <summary><span class="disclose">▶</span>History (<span id="histCount">0</span> destroyed)</summary>
     <div id="histList" style="margin-top:8px"></div>
   </details>
 </main>
 
 <footer>
   Each environment is a dedicated application container plus its own PostgreSQL database,
-  created from a git repository and destroyed on demand or at TTL expiry. Costs are estimates
+  created from a git repository and destroyed on demand or at expiry. Costs are estimates
   derived from published Zerops rates. Mutating actions require the admin API key.
 </footer>
 
@@ -299,7 +420,7 @@ function relative(target) {
   return Math.floor(h / 24) + 'd';
 }
 
-/* ---------- toast ---------- */
+/* ── toast ── */
 let toastTimer = null;
 function notify(message, isError = false) {
   const el = document.getElementById('toast');
@@ -309,7 +430,7 @@ function notify(message, isError = false) {
   toastTimer = setTimeout(() => { el.className = ''; }, 4500);
 }
 
-/* ---------- admin key ---------- */
+/* ── admin key ── */
 function adminKey(forcePrompt = false) {
   let key = localStorage.getItem('ephemera_admin_key') || '';
   if (!key || forcePrompt) {
@@ -336,7 +457,7 @@ async function authed(path, options = {}) {
   return response;
 }
 
-/* ---------- environments ---------- */
+/* ── environments ── */
 async function seed() {
   try {
     const response = await fetch('/api/environments?all=true');
@@ -447,36 +568,37 @@ function render() {
 
   const burning = all.filter((e) => ['creating', 'building', 'ready'].includes(e.status));
   document.getElementById('sLive').textContent = active.length;
-  document.getElementById('sBurn').textContent =
-    '$' + burning.reduce((sum, e) => sum + e.cost.hourly, 0).toFixed(4) + '/h';
+  document.getElementById('sBurn').innerHTML =
+    '$' + burning.reduce((sum, e) => sum + e.cost.hourly, 0).toFixed(4) + '<small>/h</small>';
   document.getElementById('sSpend').textContent =
     fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
 
   const times = all.map((e) => e.provisioningSeconds).filter((v) => typeof v === 'number');
-  document.getElementById('sFast').textContent = times.length ? Math.min(...times) + 's' : '—';
+  document.getElementById('sFast').innerHTML = times.length
+    ? Math.min(...times) + '<small>s</small>' : '—';
 }
 
 /* Advance costs and TTLs locally between server events. */
 setInterval(() => {
-  let dirtyStats = false;
+  let dirty = false;
   for (const env of state.values()) {
     if (['creating', 'building', 'ready'].includes(env.status)) {
       env.cost.accrued += env.cost.hourly / 3600;
-      dirtyStats = true;
+      dirty = true;
       const costEl = document.querySelector('#env-' + env.id + ' [data-cost]');
       if (costEl) costEl.textContent = fmtCost(env.cost.accrued);
       const ttlEl = document.querySelector('#env-' + env.id + ' [data-ttl]');
       if (ttlEl) ttlEl.textContent = relative(env.expiresAt);
     }
   }
-  if (dirtyStats) {
+  if (dirty) {
     const all = [...state.values()];
     document.getElementById('sSpend').textContent =
       fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
   }
 }, 1000);
 
-/* ---------- repositories ---------- */
+/* ── repositories ── */
 async function loadRepos() {
   const listEl = document.getElementById('repoList');
   try {
@@ -532,7 +654,7 @@ document.getElementById('repoForm').addEventListener('submit', async (event) => 
   }
 });
 
-/* ---------- create form ---------- */
+/* ── create form ── */
 document.getElementById('createForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -570,7 +692,7 @@ document.getElementById('createForm').addEventListener('submit', async (event) =
   }
 });
 
-/* ---------- live feed ---------- */
+/* ── live feed ── */
 function connect() {
   const source = new EventSource('/api/stream');
   const dot = document.getElementById('dot');
