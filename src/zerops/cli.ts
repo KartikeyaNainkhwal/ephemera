@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { config } from '../config.js';
+import { listServices } from './client.js';
 
 const execFileAsync = promisify(execFile);
 const require = createRequire(import.meta.url);
@@ -109,7 +110,16 @@ export async function serviceImport(importYaml: string): Promise<CliResult> {
   }
 }
 
-/** Destroy a single service by hostname. Idempotent from our perspective. */
+/**
+ * Destroy a single service.
+ *
+ * Deletion is addressed by **service id**, not hostname. Passing a hostname is
+ * documented and usually works, but `zcli` intermittently fails to resolve one
+ * — logging `Selected service: ` with an empty name and exiting `Not Found`
+ * while the service is plainly listed. That failure mode is how an environment
+ * came to be marked destroyed while its containers were still running and
+ * billing. Resolving the id through the REST API first removes the ambiguity.
+ */
 export async function serviceDelete(hostname: string): Promise<CliResult> {
   if (config.protectedHostnames.includes(hostname)) {
     throw new Error(
@@ -118,12 +128,21 @@ export async function serviceDelete(hostname: string): Promise<CliResult> {
     );
   }
   await ensureLogin();
+
+  const services = await listServices();
+  const target = services.find((service) => service.name === hostname);
+  if (!target) {
+    // Already gone. Callers treat this as success.
+    return { stdout: `service ${hostname} not present`, stderr: '', durationMs: 0 };
+  }
+
   return run([
     'service',
     'delete',
-    hostname,
     '--project-id',
     config.zerops.projectId,
+    '--service-id',
+    target.id,
     '--confirm',
   ]);
 }
