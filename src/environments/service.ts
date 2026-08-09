@@ -295,6 +295,9 @@ async function waitUntilServing(
     const result = await probe(record.url);
     if (result.reachable) {
       announce(await store.setStatus(record.id, 'ready'));
+      // The database exists and is idle: the one moment a migration can be
+      // measured for real without endangering anything.
+      events.emit('ready', record);
       console.log(
         `[ephemera] ${record.slug} is serving at ${record.url} ` +
           `(${Math.round((Date.now() - record.createdAt.getTime()) / 1000)}s)`,

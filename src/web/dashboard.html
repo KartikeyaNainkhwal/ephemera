@@ -4,437 +4,404 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ephemera — disposable environments on Zerops</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231d1d1f'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-style='italic' font-size='20' fill='%23fff' text-anchor='middle'%3EE%3C/text%3E%3C/svg%3E" />
 <style>
   :root {
     color-scheme: light;
-
-    /* surfaces */
     --bg: #f5f5f7;
     --card: #ffffff;
-    --sunken: #fafafc;
-    --line: #e9e9ee;
-    --line-strong: #d7d7de;
-
-    /* ink */
     --ink: #1d1d1f;
     --ink-2: #6e6e73;
     --ink-3: #a1a1a6;
-
-    /* semantic — validated for contrast on a light surface */
+    --line: #e8e8ed;
+    --line-strong: #d2d2d7;
     --link: #256abf;
-    --good: #007a33;
-    --good-bg: #eaf5ee;
-    --good-line: #cbe6d5;
+    --good: #008300;
+    --good-bg: #eaf4ea;
+    --good-line: #cfe6cf;
     --warn: #8a5a00;
-    --warn-bg: #fbf2df;
-    --warn-line: #eedfba;
+    --warn-bg: #faf1dc;
+    --warn-line: #eddfba;
     --bad: #b42318;
     --bad-bg: #fdecea;
     --bad-line: #f5cdc8;
-
-    /* type */
     --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, system-ui, sans-serif;
     --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
     --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
-
-    /* spacing scale */
-    --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
-    --s5: 20px; --s6: 24px; --s7: 32px; --s8: 44px;
-
-    --radius: 14px;
-    --radius-sm: 10px;
-    --shadow: 0 1px 2px rgba(29,29,31,.05), 0 1px 1px rgba(29,29,31,.03);
   }
-
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font: 15px/1.55 var(--sans);
+    font: 15px/1.6 var(--sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   a { color: inherit; }
-  button, select, input, textarea { font-family: inherit; }
 
-  .shell { max-width: 1180px; margin: 0 auto; padding: 0 var(--s6); }
-
-  /* ── masthead ─────────────────────────────────────────── */
+  /* ── masthead ─────────────────────────────────────────────── */
   header {
     background: var(--card);
     border-bottom: 1px solid var(--line);
-  }
-  .masthead {
-    display: flex; align-items: center; gap: var(--s6);
-    padding: var(--s6) 0 var(--s5); flex-wrap: wrap;
+    padding: 26px 36px 22px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
   }
   .wordmark {
-    font-family: var(--serif); font-style: italic; font-weight: 600;
-    font-size: 25px; line-height: 1; letter-spacing: -.01em;
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    line-height: 1;
   }
-  .tagline { color: var(--ink-2); font-size: 13.5px; margin: var(--s2) 0 0; max-width: 54ch; }
-  nav.links { margin-left: auto; display: flex; gap: var(--s5); align-items: center; }
+  .tagline {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    margin: 6px 0 0;
+    max-width: 52ch;
+  }
+  nav.links { margin-left: auto; display: flex; gap: 22px; align-items: center; }
   nav.links a {
     color: var(--ink-2); font-size: 13px; text-decoration: none;
-    border-bottom: 1px solid transparent; padding-bottom: 1px;
+    padding-bottom: 1px; border-bottom: 1px solid transparent;
   }
   nav.links a:hover { color: var(--ink); border-bottom-color: var(--line-strong); }
   .live {
-    display: inline-flex; align-items: center; gap: var(--s2);
+    display: inline-flex; align-items: center; gap: 7px;
     font-size: 12px; color: var(--ink-2);
-    border: 1px solid var(--line); border-radius: 980px; padding: 5px 12px;
+    border: 1px solid var(--line); border-radius: 980px;
+    padding: 5px 12px; background: var(--card);
   }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
-  .dot.on { background: var(--good); animation: breathe 2.6s ease-in-out infinite; }
-  @keyframes breathe { 50% { opacity: .4; } }
+  .dot.on { background: var(--good); animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { opacity: .45; } }
 
-  /* ── stat band ────────────────────────────────────────── */
-  .stats {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    gap: var(--s4); padding: var(--s6) 0 var(--s2);
-  }
-  .stat {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: var(--s4) var(--s5) var(--s4);
-    box-shadow: var(--shadow);
-  }
-  .stat .k { color: var(--ink-2); font-size: 12px; font-weight: 500; }
-  /* Proportional figures: tabular makes display numbers look loose. */
-  .stat .v { font-size: 28px; font-weight: 650; letter-spacing: -.022em; margin-top: 3px; }
-  .stat .v small { font-size: 14px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
-  .stat .sub { color: var(--ink-3); font-size: 11.5px; margin-top: 3px; }
-  .meter { height: 4px; border-radius: 980px; background: #e6e6ec; margin-top: var(--s3); overflow: hidden; }
-  .meter > i { display: block; height: 100%; background: var(--ink); border-radius: 980px; transition: width .4s; }
-  .meter.warn > i { background: var(--warn); }
-  .meter.bad  > i { background: var(--bad); }
-
-  main { padding: var(--s5) 0 var(--s8); display: flex; flex-direction: column; gap: var(--s5); }
-
-  .section-head {
-    display: flex; align-items: baseline; gap: var(--s3);
-    margin: var(--s3) 0 calc(var(--s2) * -1); flex-wrap: wrap;
-  }
-  .section-head h2 { font-size: 13px; font-weight: 600; letter-spacing: .04em;
-                     text-transform: uppercase; color: var(--ink-2); margin: 0; }
-  .section-head .hint { color: var(--ink-3); }
-
-  /* ── repository block ─────────────────────────────────── */
-  .repo {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
-    margin-bottom: var(--s4);
-  }
-  .repo-head {
-    display: flex; align-items: center; gap: var(--s3);
-    padding: var(--s4) var(--s5); flex-wrap: wrap;
-  }
-  .repo-name { font-family: var(--mono); font-size: 13.5px; font-weight: 600; }
-  .repo-name .owner { color: var(--ink-3); font-weight: 500; }
-  .chip {
-    font-size: 11.5px; color: var(--ink-2); background: var(--sunken);
-    border: 1px solid var(--line); padding: 3px 9px; border-radius: 980px;
-  }
-  .repo-tools { margin-left: auto; display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
-
-  /* ── environment rows ─────────────────────────────────── */
-  .envs { border-top: 1px solid var(--line); }
-  .env {
-    display: grid;
-    grid-template-columns: 150px minmax(0,1fr) auto;
-    gap: var(--s4); align-items: center;
-    padding: var(--s3) var(--s5);
+  .how {
+    margin: 0; padding: 13px 36px;
+    color: var(--ink-2); font-size: 13px;
+    background: var(--card);
     border-bottom: 1px solid var(--line);
   }
-  .env:last-child { border-bottom: 0; }
-  .env:hover { background: var(--sunken); }
+  .how b { color: var(--ink); font-weight: 600; }
+  .how .sep { margin: 0 10px; color: var(--ink-3); }
 
-  .env-id { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-  .env-id .mark { color: var(--ink-3); font-size: 11px; }
-  .env-id .mark.prod { color: var(--link); }
-  .env-label { font-size: 13.5px; font-weight: 600; white-space: nowrap;
-               overflow: hidden; text-overflow: ellipsis; }
-  .env-branch { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
-                white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  .env-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-  .env-title { font-size: 13px; color: var(--ink-2); white-space: nowrap;
-               overflow: hidden; text-overflow: ellipsis; }
-  .env-url { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
-  .env-url a {
-    font-family: var(--mono); font-size: 12px; color: var(--link);
-    text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  /* ── stat row ─────────────────────────────────────────────── */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    padding: 26px 36px 6px;
+    max-width: 1280px; margin: 0 auto;
   }
-  .env-url a:hover { text-decoration: underline; }
-  .env-url a.pending { color: var(--ink-3); pointer-events: none; }
-  .copy {
-    border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
-    font-size: 11px; padding: 2px 5px; border-radius: 6px; flex: none;
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 20px 15px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
   }
-  .copy:hover { background: var(--line); color: var(--ink); }
+  .stat .k {
+    color: var(--ink-2); font-size: 12px; font-weight: 500;
+  }
+  .stat .v {
+    font-size: 27px; font-weight: 650; letter-spacing: -0.02em;
+    margin-top: 2px;
+  }
+  .stat .v small { font-size: 15px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
 
-  .env-side { display: flex; align-items: center; gap: var(--s3); justify-self: end; }
-  .env-meta { text-align: right; font-size: 11.5px; color: var(--ink-3); line-height: 1.35; }
-  .env-meta b { display: block; color: var(--ink-2); font-size: 12.5px; font-weight: 600;
-                font-variant-numeric: tabular-nums; }
+  main {
+    padding: 20px 36px 64px;
+    max-width: 1280px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 18px;
+  }
 
+  /* ── panels ───────────────────────────────────────────────── */
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px 22px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
+  }
+  .panel-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .panel-head b { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .hint { color: var(--ink-2); font-size: 12.5px; }
+
+  .repo-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--line);
+  }
+  .repo-row:last-of-type { border-bottom: 0; }
+  .repo-row .name { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .repo-row .when { color: var(--ink-3); font-size: 12px; margin-left: auto; }
+
+  form.inline { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+  .detected {
+    margin-top: 14px; padding: 16px 18px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+  }
+  .detected-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .badge {
+    font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 980px;
+    background: var(--good-bg); color: var(--good); border: 1px solid var(--good-line);
+  }
+  .badge.low { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+  .badge.prod { background: #eef2fb; color: var(--link); border-color: #d3e0f5; }
+
+  .card.production { border-color: #d3e0f5; box-shadow: 0 1px 2px rgba(37,106,191,.10); }
+  .card.production .slug::before { content: '◆ '; color: var(--link); }
+
+  .repo-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+  .repo-actions select { font-size: 12.5px; padding: 6px 10px; border-radius: 980px;
+                         border: 1px solid var(--line-strong); background: var(--card);
+                         color: var(--ink-2); }
+  .repo-actions select:hover { color: var(--ink); }
+  .secrets { margin-top: 12px; padding: 14px 16px; background: var(--bg);
+             border: 1px solid var(--line); border-radius: 12px; }
+  .secret-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px;
+                border-bottom: 1px solid var(--line); font-size: 13px; }
+  .secret-row:last-of-type { border-bottom: 0; }
+  .secret-row .k { font-family: var(--mono); font-weight: 600; }
+  .secret-row .v { font-family: var(--mono); color: var(--ink-3); }
+  .secret-row .tag { font-size: 11px; color: var(--ink-2); border: 1px solid var(--line);
+                     padding: 2px 7px; border-radius: 980px; background: var(--card); }
+  .note { font-size: 12.5px; color: var(--ink-2); margin: 10px 0 0; line-height: 1.5; }
+  .note strong { color: var(--ink); }
+
+  input[type=text], input[type=number], select, textarea {
+    background: var(--card);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    padding: 9px 13px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(29,29,31,.08);
+  }
+  textarea { font-family: var(--mono); font-size: 12.5px; min-height: 56px; resize: vertical; }
+  ::placeholder { color: var(--ink-3); }
+
+  button {
+    background: var(--ink);
+    color: #fff;
+    border: 0;
+    font-weight: 500;
+    font-family: inherit;
+    padding: 9px 18px;
+    border-radius: 980px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: opacity .15s;
+  }
+  button:hover { opacity: .85; }
+  button.quiet {
+    background: var(--card);
+    color: var(--ink-2);
+    border: 1px solid var(--line-strong);
+    font-size: 12.5px;
+    padding: 6px 13px;
+  }
+  button.quiet:hover { color: var(--ink); opacity: 1; border-color: var(--ink-3); }
+  button.danger:hover { color: var(--bad); border-color: var(--bad-line); background: var(--bad-bg); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-2); font-weight: 500; }
+  .form-wide { grid-column: 1 / -1; }
+  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+  .form-error { color: var(--bad); font-size: 12.5px; white-space: pre-wrap; }
+
+  details > summary { cursor: pointer; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  summary .disclose { color: var(--ink-3); font-size: 11px; margin-right: 8px; display: inline-block; transition: transform .15s; }
+  details[open] summary .disclose { transform: rotate(90deg); }
+
+  .empty {
+    background: var(--card);
+    border: 1px dashed var(--line-strong);
+    border-radius: 14px;
+    padding: 44px 24px;
+    text-align: center;
+    color: var(--ink-2);
+    font-size: 14px;
+  }
+
+  /* ── environment cards ────────────────────────────────────── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex; flex-direction: column; gap: 13px;
+    box-shadow: 0 1px 2px rgba(29,29,31,.04);
+  }
+  .card-top { display: flex; align-items: center; gap: 10px; }
+  .slug { font-family: var(--mono); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
   .pill {
+    margin-left: auto;
     font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
-    padding: 4px 10px; border-radius: 980px; border: 1px solid var(--line);
-    color: var(--ink-2); background: var(--sunken); white-space: nowrap;
+    padding: 4px 10px; border-radius: 980px;
+    border: 1px solid var(--line);
+    color: var(--ink-2); background: var(--bg);
   }
   .pill.ready { color: var(--good); background: var(--good-bg); border-color: var(--good-line); }
   .pill.creating, .pill.building { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
   .pill.failed { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-line); }
 
-  /* Honest progress: elapsed time plus an indeterminate shimmer. A determinate
-     bar would be a lie — a static site takes 70s and Next.js can take nine
-     minutes, so we never pretend to know the time remaining. */
-  .working { display: flex; align-items: center; gap: var(--s2); }
-  .shimmer { width: 54px; height: 3px; border-radius: 980px; background: #ececed; overflow: hidden; }
-  .shimmer > i {
-    display: block; width: 40%; height: 100%; border-radius: 980px;
-    background: var(--warn); animation: slide 1.5s ease-in-out infinite;
+  .title { color: var(--ink-2); font-size: 13px; margin: -5px 0 0; }
+  .url {
+    font-family: var(--mono); font-size: 12.5px;
+    color: var(--link); text-decoration: none; word-break: break-all;
   }
-  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+  .url:hover { text-decoration: underline; }
+  .url.pending { color: var(--ink-3); pointer-events: none; }
 
-  .env-actions { display: flex; gap: 6px; }
+  .services { display: flex; gap: 7px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--bg); border: 1px solid var(--line);
+    padding: 3px 9px; border-radius: 7px; color: var(--ink-2);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
 
-  .env-error {
-    grid-column: 1 / -1; margin-top: var(--s2);
+  .meta {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    border-top: 1px solid var(--line); padding-top: 13px;
+  }
+  .meta div { font-size: 11.5px; color: var(--ink-2); }
+  .meta .mv {
+    display: block; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
+    margin-top: 3px; font-variant-numeric: tabular-nums;
+  }
+
+  .err {
     font-size: 12.5px; color: var(--bad);
     background: var(--bad-bg); border: 1px solid var(--bad-line);
-    padding: var(--s2) var(--s3); border-radius: var(--radius-sm);
+    padding: 10px 12px; border-radius: 10px; word-break: break-word;
   }
-  .env-error details { margin-top: 5px; }
-  .env-error summary { cursor: pointer; color: #9d5049; font-size: 11.5px; }
-  .env-error pre { margin: 5px 0 0; font-size: 11px; white-space: pre-wrap;
-                   color: #7c4a44; max-height: 150px; overflow: auto; }
+  .err details { margin-top: 6px; }
+  .err summary { cursor: pointer; color: #9d5049; font-size: 11.5px; }
+  .err pre { margin: 6px 0 0; font-size: 11px; white-space: pre-wrap; color: #7c4a44;
+             max-height: 160px; overflow: auto; }
+  .card-actions { display: flex; gap: 8px; }
 
-  .repo-empty { padding: var(--s5); color: var(--ink-3); font-size: 13px; text-align: center; }
-
-  /* ── controls ─────────────────────────────────────────── */
-  button.primary {
-    background: var(--ink); color: #fff; border: 0; font-weight: 500;
-    padding: 9px 17px; border-radius: 980px; cursor: pointer; font-size: 14px;
-    transition: opacity .15s;
+  /* ── history ──────────────────────────────────────────────── */
+  details.history { background: transparent; }
+  details.history summary {
+    color: var(--ink-2); font-size: 13.5px; padding: 4px 2px;
   }
-  button.primary:hover { opacity: .86; }
-  button.ghost {
-    background: var(--card); color: var(--ink-2); border: 1px solid var(--line-strong);
-    font-size: 12.5px; padding: 6px 12px; border-radius: 980px; cursor: pointer;
-    transition: all .15s; white-space: nowrap;
-  }
-  button.ghost:hover { color: var(--ink); border-color: var(--ink-3); }
-  button.ghost.approve:hover { color: var(--good); border-color: var(--good-line); background: var(--good-bg); }
-  button.ghost.danger:hover { color: var(--bad); border-color: var(--bad-line); background: var(--bad-bg); }
-  button:disabled { opacity: .42; cursor: not-allowed; }
-
-  select.policy {
-    font-size: 12.5px; padding: 6px 11px; border-radius: 980px;
-    border: 1px solid var(--line-strong); background: var(--card); color: var(--ink-2);
-    cursor: pointer;
-  }
-  select.policy:hover { color: var(--ink); }
-
-  input[type=text], input[type=number], select, textarea {
-    background: var(--card); border: 1px solid var(--line-strong); color: var(--ink);
-    padding: 9px 13px; border-radius: var(--radius-sm); font-size: 14px;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  input:focus, select:focus, textarea:focus {
-    outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(29,29,31,.07);
-  }
-  textarea { font-family: var(--mono); font-size: 12.5px; min-height: 56px; resize: vertical; }
-  ::placeholder { color: var(--ink-3); }
-
-  .panel {
-    background: var(--card); border: 1px solid var(--line);
-    border-radius: var(--radius); padding: var(--s5); box-shadow: var(--shadow);
-  }
-  .hint { color: var(--ink-2); font-size: 12.5px; }
-  .hint code { font-family: var(--mono); font-size: 11.5px; background: var(--sunken);
-               border: 1px solid var(--line); padding: 1px 5px; border-radius: 5px; }
-
-  form.inline { display: flex; gap: var(--s2); flex-wrap: wrap; }
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--s3); }
-  .form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px;
-                     color: var(--ink-2); font-weight: 500; }
-  .form-wide { grid-column: 1 / -1; }
-  .form-actions { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s4); flex-wrap: wrap; }
-  .form-error { color: var(--bad); font-size: 12.5px; white-space: pre-wrap; }
-
-  details > summary { cursor: pointer; list-style: none; }
-  details > summary::-webkit-details-marker { display: none; }
-  .disclose { color: var(--ink-3); font-size: 10px; margin-right: 7px;
-              display: inline-block; transition: transform .15s; }
-  details[open] > summary .disclose { transform: rotate(90deg); }
-
-  .detected { margin-top: var(--s3); padding: var(--s4); background: var(--sunken);
-              border: 1px solid var(--line); border-radius: var(--radius-sm); }
-  .badge { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 980px;
-           background: var(--good-bg); color: var(--good); border: 1px solid var(--good-line); }
-  .badge.low { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
-
-  .secrets { border-top: 1px solid var(--line); padding: var(--s4) var(--s5); background: var(--sunken); }
-  .secret-row { display: flex; align-items: center; gap: var(--s3); padding: 7px 0;
-                border-bottom: 1px solid var(--line); font-size: 13px; flex-wrap: wrap; }
-  .secret-row:last-of-type { border-bottom: 0; }
-  .secret-row .k { font-family: var(--mono); font-weight: 600; }
-  .secret-row .v { font-family: var(--mono); color: var(--ink-3); }
-  .note { font-size: 12.5px; color: var(--ink-2); margin: var(--s3) 0 0; line-height: 1.5; }
-  .note strong { color: var(--ink); }
-
-  /* ── first run ────────────────────────────────────────── */
-  .onboard { text-align: center; padding: var(--s8) var(--s5); }
-  .onboard h3 { font-family: var(--serif); font-style: italic; font-size: 24px;
-                margin: 0 0 var(--s2); font-weight: 600; }
-  .onboard p { color: var(--ink-2); margin: 0 auto var(--s5); max-width: 48ch; }
-  .steps { display: flex; gap: var(--s5); justify-content: center; flex-wrap: wrap;
-           color: var(--ink-2); font-size: 13px; }
-  .steps div { display: flex; align-items: center; gap: var(--s2); }
-  .steps b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
-             background: var(--ink); color: #fff; font-size: 11px; font-weight: 600; }
-
-  /* ── history ──────────────────────────────────────────── */
   .hrow {
-    display: grid; grid-template-columns: 150px minmax(0,1fr) 76px 88px 96px;
-    gap: var(--s3); align-items: center; padding: 9px var(--s5);
-    border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3);
+    display: grid; grid-template-columns: minmax(120px,1fr) 2fr 80px 90px 120px;
+    gap: 12px; align-items: center; padding: 10px 4px;
+    border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-2);
     font-variant-numeric: tabular-nums;
   }
-  .hrow:last-child { border-bottom: 0; }
-  .hrow b { font-weight: 600; color: var(--ink-2); font-variant-numeric: normal; }
+  .hrow b { font-family: var(--mono); color: var(--ink); font-weight: 600; }
+  .hrow .mono { font-family: var(--mono); }
+  @media (max-width: 700px) { .hrow { grid-template-columns: 1fr 80px 90px; } .hrow .hide-sm { display: none; } }
 
   #toast {
-    position: fixed; right: var(--s6); bottom: var(--s6); max-width: 420px;
-    background: var(--ink); color: #fff; padding: 13px 18px; border-radius: 12px;
-    font-size: 13.5px; box-shadow: 0 10px 30px rgba(29,29,31,.2);
-    opacity: 0; transform: translateY(10px); transition: all .25s;
-    pointer-events: none; white-space: pre-wrap; z-index: 50;
+    position: fixed; right: 24px; bottom: 24px; max-width: 400px;
+    background: var(--ink); color: #fff;
+    padding: 13px 18px; border-radius: 12px; font-size: 13.5px;
+    box-shadow: 0 8px 24px rgba(29,29,31,.18);
+    opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none;
+    white-space: pre-wrap;
   }
   #toast.show { opacity: 1; transform: none; }
   #toast.error { background: var(--bad); }
 
-  footer { color: var(--ink-3); font-size: 12px; padding: 0 0 var(--s8); }
-
-  @media (max-width: 860px) {
-    .env { grid-template-columns: 1fr; gap: var(--s2); }
-    .env-side { justify-self: start; flex-wrap: wrap; }
-    .hrow { grid-template-columns: 1fr 76px 88px; }
-    .hrow .hide-sm { display: none; }
+  footer {
+    padding: 0 36px 48px; color: var(--ink-3); font-size: 12px;
+    max-width: 1280px; margin: 0 auto;
   }
 </style>
 </head>
 <body>
-
 <header>
-  <div class="shell masthead">
-    <div>
-      <div class="wordmark">Ephemera</div>
-      <p class="tagline">Every pull request gets its own live app and its own database, on Zerops.</p>
-    </div>
-    <nav class="links">
-      <a href="https://github.com/KartikeyaNainkhwal/ephemera" target="_blank" rel="noopener">Source</a>
-      <a href="https://github.com/KartikeyaNainkhwal/ephemera#http-api" target="_blank" rel="noopener">API</a>
-      <a href="https://github.com/KartikeyaNainkhwal/ephemera#give-an-agent-environments" target="_blank" rel="noopener">MCP</a>
-      <span class="live"><span class="dot" id="dot"></span><span id="liveText">connecting</span></span>
-    </nav>
+  <div>
+    <div class="wordmark">Ephemera</div>
+    <p class="tagline">Disposable, fully isolated environments on Zerops — one per pull request, one per agent task.</p>
   </div>
+  <nav class="links">
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera" target="_blank" rel="noopener">Source</a>
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera#http-api" target="_blank" rel="noopener">API</a>
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera#give-an-agent-environments" target="_blank" rel="noopener">MCP</a>
+    <span class="live"><span class="dot" id="dot"></span><span id="liveText">connecting</span></span>
+  </nav>
 </header>
 
-<div class="shell">
-  <section class="stats">
-    <div class="stat">
-      <div class="k">Running now</div>
-      <div class="v" id="sLive">0</div>
-      <div class="sub" id="sLiveSub">nothing provisioned</div>
+<p class="how">
+  <b>Connect a repository</b><span class="sep">→</span>its default branch becomes
+  <b>production</b>, and every pull request gets its own live app with
+  <b>its own PostgreSQL</b><span class="sep">→</span>review it, then
+  <b>approve or reject right here</b> — merging redeploys production automatically.
+</p>
+
+<section class="stats">
+  <div class="stat"><div class="k">Live environments</div><div class="v" id="sLive">0</div></div>
+  <div class="stat"><div class="k">Burn rate</div><div class="v" id="sBurn">$0.0000<small>/h</small></div></div>
+  <div class="stat"><div class="k">Total spend</div><div class="v" id="sSpend">$0.00000</div></div>
+  <div class="stat"><div class="k">Fastest provision</div><div class="v" id="sFast">—</div></div>
+</section>
+
+<main>
+  <section class="panel">
+    <div class="panel-head">
+      <b>Connected repositories</b>
+      <span class="hint">Ephemera detects how to build each one — no config files in your repository. Forks need <code>/preview</code> by default.</span>
     </div>
-    <div class="stat">
-      <div class="k">Burn rate</div>
-      <div class="v" id="sBurn">$0.0000<small>/h</small></div>
-      <div class="sub" id="sBurnSub">costs nothing while idle</div>
-    </div>
-    <div class="stat">
-      <div class="k">Spent, all time</div>
-      <div class="v" id="sSpend">$0.00</div>
-      <div class="sub" id="sSpendSub">across every environment</div>
-    </div>
-    <div class="stat">
-      <div class="k">Capacity</div>
-      <div class="v" id="sCap">0<small> / 10</small></div>
-      <div class="meter" id="capMeter"><i style="width:0%"></i></div>
+    <div id="repoList"><span class="hint">Loading…</span></div>
+    <form class="inline" id="repoForm">
+      <input type="text" id="repoInput" placeholder="owner/repository — or paste the GitHub URL" autocomplete="off" style="flex:1; min-width: 220px" />
+      <button type="submit" id="inspectBtn">Inspect</button>
+    </form>
+
+    <div id="detected" class="detected" style="display:none">
+      <div class="detected-head">
+        <span class="badge" id="dFramework">—</span>
+        <span class="hint" id="dReason"></span>
+      </div>
+      <div class="form-grid" style="margin-top:12px">
+        <label>Runtime <input type="text" id="dRuntime" /></label>
+        <label>Port <input type="number" id="dPort" min="1" max="65535" /></label>
+        <label style="flex-direction:row; align-items:center; gap:9px; margin-top:20px">
+          <input type="checkbox" id="dDatabase" style="width:16px;height:16px;accent-color:#1d1d1f" /> Dedicated PostgreSQL
+        </label>
+        <label class="form-wide">Build commands <span class="hint" style="font-weight:400">(one per line)</span>
+          <textarea id="dBuild"></textarea>
+        </label>
+        <label class="form-wide">Start command <input type="text" id="dStart" /></label>
+      </div>
+      <div class="form-actions">
+        <button type="button" id="confirmBtn">Connect repository</button>
+        <button type="button" class="quiet" id="cancelBtn">Cancel</button>
+        <span class="form-error" id="detectError"></span>
+      </div>
     </div>
   </section>
 
-  <main>
-    <div id="onboard" class="panel onboard" style="display:none">
-      <h3>Connect your first repository</h3>
-      <p>Ephemera reads the repository, works out how to build it, and installs the
-         webhook itself. Nothing is added to your code.</p>
-      <div class="steps">
-        <div><b>1</b> Paste a repository</div>
-        <div><b>2</b> Confirm what it detected</div>
-        <div><b>3</b> Open a pull request</div>
-      </div>
-    </div>
-
-    <div class="section-head">
-      <h2>Repositories</h2>
-      <span class="hint">production plus a preview for every pull request — forks need <code>/preview</code></span>
-    </div>
-
-    <div id="repoList"></div>
-
-    <div class="panel">
-      <form class="inline" id="repoForm">
-        <input type="text" id="repoInput" placeholder="owner/repository — or paste the GitHub URL"
-               autocomplete="off" style="flex:1; min-width:240px" />
-        <button type="submit" class="primary" id="inspectBtn">Inspect</button>
-      </form>
-
-      <div id="detected" class="detected" style="display:none">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span class="badge" id="dFramework">—</span>
-          <span class="hint" id="dReason"></span>
-        </div>
-        <div class="form-grid" style="margin-top:14px">
-          <label>Runtime <input type="text" id="dRuntime" /></label>
-          <label>Port <input type="number" id="dPort" min="1" max="65535" /></label>
-          <label style="flex-direction:row;align-items:center;gap:9px;margin-top:22px">
-            <input type="checkbox" id="dDatabase" style="width:16px;height:16px;accent-color:#1d1d1f" />
-            Dedicated PostgreSQL
-          </label>
-          <label class="form-wide">Build commands <span class="hint" style="font-weight:400">(one per line)</span>
-            <textarea id="dBuild"></textarea></label>
-          <label class="form-wide">Start command <input type="text" id="dStart" /></label>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="primary" id="confirmBtn">Connect repository</button>
-          <button type="button" class="ghost" id="cancelBtn">Cancel</button>
-          <span class="form-error" id="detectError"></span>
-        </div>
-      </div>
-    </div>
-
-    <div id="otherWrap" style="display:none">
-      <div class="section-head">
-        <h2>Other environments</h2>
-        <span class="hint">created through the API or by an agent</span>
-      </div>
-      <div class="panel" style="padding:0"><div class="envs" id="otherEnvs"></div></div>
-    </div>
-
-    <details class="panel" style="padding:16px 20px">
-      <summary><span class="disclose">▶</span><b style="font-size:14px">Build any public repository on demand</b></summary>
+  <section class="panel">
+    <details>
+      <summary><span class="disclose">▶</span><b>New environment</b> <span class="hint">— build any public repository on demand</span></summary>
       <form id="createForm" style="margin-top:16px">
         <div class="form-grid">
-          <label>Name <input type="text" name="slug" placeholder="mytest" required /></label>
-          <label class="form-wide">Repository URL
-            <input type="text" name="repo" placeholder="https://github.com/owner/name" required /></label>
-          <label>Branch <input type="text" name="branch" placeholder="(default)" /></label>
+          <label>Slug <input type="text" name="slug" placeholder="mytest" required /></label>
+          <label class="form-wide">Repository URL <input type="text" name="repo" placeholder="https://github.com/owner/name" required /></label>
+          <label>Branch <input type="text" name="branch" placeholder="(default branch)" /></label>
           <label>Runtime
             <select name="runtime">
               <option value="nodejs@22">nodejs@22</option>
@@ -442,115 +409,109 @@
               <option value="bun@1.3">bun@1.3</option>
               <option value="python@3.12">python@3.12</option>
               <option value="go@1.22">go@1.22</option>
-            </select></label>
+              <option value="static">static (plain HTML/CSS/JS)</option>
+            </select>
+          </label>
           <label>Port <input type="number" name="port" value="3000" min="1" max="65535" /></label>
           <label>Lifetime
             <select name="ttlMinutes">
               <option value="120">2 hours</option>
               <option value="240">4 hours</option>
               <option value="1440">24 hours</option>
-            </select></label>
-          <label class="form-wide">Build commands
-            <textarea name="buildCommands" placeholder="npm install"></textarea></label>
+            </select>
+          </label>
+          <label class="form-wide">Build commands <span class="hint" style="font-weight:400">(one per line — defaults to npm install)</span>
+            <textarea name="buildCommands" placeholder="npm install"></textarea>
+          </label>
           <label>Start command <input type="text" name="startCommand" placeholder="npm start" /></label>
-          <label style="flex-direction:row;align-items:center;gap:9px;margin-top:22px">
-            <input type="checkbox" name="withDatabase" checked style="width:16px;height:16px;accent-color:#1d1d1f" />
-            Dedicated PostgreSQL</label>
+          <label style="flex-direction:row; align-items:center; gap:9px; margin-top:20px">
+            <input type="checkbox" name="withDatabase" checked style="width:16px;height:16px;accent-color:#1d1d1f" /> Dedicated PostgreSQL
+          </label>
         </div>
         <div class="form-actions">
-          <button type="submit" class="primary" id="createBtn">Create environment</button>
+          <button type="submit" id="createBtn">Create environment</button>
           <span class="form-error" id="createError"></span>
         </div>
       </form>
     </details>
+  </section>
 
-    <details class="panel" style="padding:16px 0">
-      <summary style="padding:0 20px">
-        <span class="disclose">▶</span>
-        <b style="font-size:14px">History</b>
-        <span class="hint">— <span id="histCount">0</span> destroyed, <span id="histCost">$0.00</span> total</span>
-      </summary>
-      <div id="histList" style="margin-top:12px"></div>
-    </details>
-  </main>
+  <div id="empty" class="empty" style="display:none">
+    No live environments. Connect a repository and open a pull request,
+    create one with the form above, or let an agent do it over MCP.
+  </div>
+  <div class="grid" id="grid"></div>
 
-  <footer>
-    Each environment is a dedicated application container plus its own PostgreSQL database,
-    built from a git repository and destroyed on demand or at expiry. Costs are estimates
-    from published Zerops rates. Changes require the admin API key.
-  </footer>
-</div>
+  <details class="history">
+    <summary><span class="disclose">▶</span>History (<span id="histCount">0</span> destroyed)</summary>
+    <div id="histList" style="margin-top:8px"></div>
+  </details>
+</main>
+
+<footer>
+  Each environment is a dedicated application container plus its own PostgreSQL database,
+  created from a git repository and destroyed on demand or at expiry. Costs are estimates
+  derived from published Zerops rates. Mutating actions require the admin API key.
+</footer>
 
 <div id="toast"></div>
 
 <script>
-/* ══════════════════════════════════════════════════════════
-   state
-   ══════════════════════════════════════════════════════════ */
-const envs = new Map();
-let repos = [];
-const capacity = 10;
+const state = new Map();
 
-/* ══════════════════════════════════════════════════════════
-   helpers
-   ══════════════════════════════════════════════════════════ */
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
-  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const money = (n) =>
+const fmtCost = (n) =>
   n >= 1 ? '$' + n.toFixed(2) : n >= 0.01 ? '$' + n.toFixed(3) : '$' + n.toFixed(5);
 
-function duration(seconds) {
-  if (seconds < 60) return seconds + 's';
-  const m = Math.floor(seconds / 60);
-  return m + 'm ' + String(seconds % 60).padStart(2, '0') + 's';
-}
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function until(target) {
+function relative(target) {
   const ms = new Date(target).getTime() - Date.now();
   if (ms <= 0) return 'expired';
   const m = Math.floor(ms / 60000);
   if (m < 60) return m + 'm';
   const h = Math.floor(m / 60);
-  if (h < 48) return h + 'h';
+  if (h < 48) return h + 'h ' + (m % 60) + 'm';
   return Math.floor(h / 24) + 'd';
 }
 
-const elapsed = (env) => Math.max(0, Math.round((Date.now() - new Date(env.createdAt)) / 1000));
-const isWorking = (env) => env.status === 'creating' || env.status === 'building';
-const isBilling = (env) => isWorking(env) || env.status === 'ready';
-
+/* ── toast ── */
 let toastTimer = null;
 function notify(message, isError = false) {
   const el = document.getElementById('toast');
   el.textContent = message;
   el.className = 'show' + (isError ? ' error' : '');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 5000);
+  toastTimer = setTimeout(() => { el.className = ''; }, 4500);
 }
 
-async function errorFrom(response) {
-  const text = await response.text().catch(() => '');
-  try {
-    const body = JSON.parse(text);
-    return (body.error || body.message || 'Request failed.') +
-      (body.requestId ? '  (ref ' + body.requestId + ')' : '');
-  } catch {
-    return text.slice(0, 200) || ('Request failed with status ' + response.status + '.');
-  }
-}
-
-function adminKey() {
+/* ── admin key ── */
+function adminKey(forcePrompt = false) {
   let key = localStorage.getItem('ephemera_admin_key') || '';
-  if (!key) {
+  if (!key || forcePrompt) {
     key = (prompt('Admin API key (EPHEMERA_API_KEY on the control plane):') || '').trim();
     if (key) localStorage.setItem('ephemera_admin_key', key);
   }
   return key;
 }
 
+/** Read an error message from a response whose body may not be JSON at all. */
+async function errorFrom(response) {
+  const text = await response.text().catch(() => '');
+  try {
+    const body = JSON.parse(text);
+    return (body.error || body.message || 'Request failed.') +
+      (body.requestId ? ' (ref ' + body.requestId + ')' : '');
+  } catch {
+    return text.slice(0, 200) || ('Request failed with status ' + response.status + '.');
+  }
+}
+
 async function authed(path, options = {}) {
   const key = adminKey();
+  // Only declare a JSON body when there actually is one - a content-type with
+  // an empty body is a real source of server-side parse errors.
   const response = await fetch(path, {
     ...options,
     headers: {
@@ -561,356 +522,327 @@ async function authed(path, options = {}) {
   });
   if (response.status === 401) {
     localStorage.removeItem('ephemera_admin_key');
-    notify('That admin key was rejected. You will be asked again on the next action.', true);
+    notify('The admin key was rejected. You will be asked again on the next action.', true);
   }
   return response;
 }
 
-/** Two-step confirmation for anything destructive. */
-function arm(button, confirmLabel, action) {
-  if (!button) return;
-  const original = button.textContent;
-  button.addEventListener('click', async () => {
-    if (button.dataset.armed !== '1') {
-      button.dataset.armed = '1';
-      button.textContent = confirmLabel;
-      setTimeout(() => {
-        if (!button.disabled) { button.dataset.armed = ''; button.textContent = original; }
-      }, 3500);
-      return;
-    }
-    button.dataset.armed = '';
-    button.disabled = true;
-    try { await action(button); }
-    finally {
-      if (document.body.contains(button)) { button.disabled = false; button.textContent = original; }
-    }
-  });
+/* ── environments ── */
+async function seed() {
+  try {
+    const response = await fetch('/api/environments?all=true');
+    if (!response.ok) return;
+    const data = await response.json();
+    for (const env of data.environments) state.set(env.id, env);
+    render();
+  } catch { /* transient; SSE will retry */ }
 }
 
-/* ══════════════════════════════════════════════════════════
-   rendering
-   ══════════════════════════════════════════════════════════ */
-function repoOf(env) {
-  const match = (env.repo || '').match(/github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/i);
-  return match ? match[1] : null;
-}
-
-function statusCell(env) {
-  if (isWorking(env)) {
-    return `<span class="working">
-      <span class="pill ${env.status}">${env.status}</span>
-      <span class="shimmer"><i></i></span>
-    </span>`;
-  }
-  return `<span class="pill ${env.status}">${env.status}</span>`;
-}
-
-function envRow(env) {
+function card(env) {
   const el = document.createElement('div');
-  el.className = 'env';
+  el.className = 'card' + (env.kind === 'production' ? ' production' : '');
   el.id = 'env-' + env.id;
 
-  const production = env.kind === 'production';
   const ready = env.status === 'ready';
   const gone = env.status === 'destroyed' || env.status === 'destroying';
   const [friendly, raw] = env.error ? env.error.split('\n---\n') : [null, null];
 
-  const label = production
-    ? 'Production'
-    : env.pullRequest ? 'PR #' + env.pullRequest.number : env.slug;
-
   el.innerHTML = `
-    <div class="env-id">
-      <span class="mark ${production ? 'prod' : ''}">${production ? '◆' : '○'}</span>
-      <div style="min-width:0">
-        <div class="env-label">${esc(label)}</div>
-        <div class="env-branch">${esc(env.branch || env.slug)}</div>
-      </div>
+    <div class="card-top">
+      <span class="slug">${escapeHtml(env.slug)}</span>
+      ${env.kind === 'production' ? '<span class="badge prod">production</span>' : ''}
+      <span class="pill ${env.status}">${env.status}</span>
     </div>
-
-    <div class="env-main">
-      ${env.title ? `<div class="env-title">${esc(env.title)}</div>` : ''}
-      <div class="env-url">
-        <a href="${esc(env.url)}" target="_blank" rel="noopener"
-           class="${ready ? '' : 'pending'}">${esc(env.url.replace('https://', ''))}</a>
-        <button class="copy" title="Copy URL" data-copy="${esc(env.url)}">copy</button>
-      </div>
-      ${friendly ? `<div class="env-error">${esc(friendly)}${
-          raw ? `<details><summary>technical detail</summary><pre>${esc(raw)}</pre></details>` : ''
-        }</div>` : ''}
+    ${env.title ? `<p class="title">${escapeHtml(env.title)}</p>` : ''}
+    <a class="url ${ready ? '' : 'pending'}" href="${escapeHtml(env.url)}" target="_blank" rel="noopener">${escapeHtml(env.url)}</a>
+    <div class="services">
+      <span class="chip">app <b>${escapeHtml(env.services.app)}</b></span>
+      ${env.services.database ? `<span class="chip">postgres <b>${escapeHtml(env.services.database)}</b></span>` : ''}
+      ${env.pullRequest
+        ? `<span class="chip">PR <b>#${env.pullRequest.number}</b></span>`
+        : `<span class="chip">source <b>${escapeHtml(env.source)}</b></span>`}
     </div>
-
-    <div class="env-side">
-      <div class="env-meta" data-timing>
-        <b>${env.provisioningSeconds !== null ? duration(env.provisioningSeconds)
-             : isWorking(env) ? duration(elapsed(env)) : '—'}</b>
-        ${env.provisioningSeconds !== null ? 'to build' : isWorking(env) ? 'elapsed' : ''}
-      </div>
-      <div class="env-meta">
-        <b data-cost>${money(env.cost.accrued)}</b>
-        ${gone ? 'total' : production ? 'so far' : until(env.expiresAt) + ' left'}
-      </div>
-      ${statusCell(env)}
-      <div class="env-actions">
-        ${env.pullRequest && ready && !gone
-          ? `<button class="ghost approve" data-approve>Approve &amp; merge</button>` : ''}
-        ${env.pullRequest && !gone ? `<button class="ghost danger" data-reject>Reject</button>` : ''}
-        ${!gone && !production && !env.pullRequest
-          ? `<button class="ghost" data-extend>+2h</button>` : ''}
-        ${!gone ? `<button class="ghost danger" data-destroy>Destroy</button>` : ''}
-      </div>
+    ${friendly ? `<div class="err">${escapeHtml(friendly)}${
+        raw ? `<details><summary>technical detail</summary><pre>${escapeHtml(raw)}</pre></details>` : ''
+      }</div>` : ''}
+    <div class="meta">
+      <div>Provisioned<span class="mv">${env.provisioningSeconds !== null ? env.provisioningSeconds + 's' : '—'}</span></div>
+      <div>Cost<span class="mv" data-cost>${fmtCost(env.cost.accrued)}</span></div>
+      <div>${gone ? 'Ended' : 'Expires'}<span class="mv" data-ttl>${gone ? '—' : relative(env.expiresAt)}</span></div>
     </div>
+    ${gone ? '' : `
+    <div class="card-actions">
+      ${env.pullRequest && ready ? `<button data-approve="${env.id}">✓ Approve &amp; merge</button>` : ''}
+      ${env.pullRequest ? `<button class="quiet danger" data-reject="${env.id}">Reject</button>` : ''}
+      ${env.kind === 'production' ? '' : `<button class="quiet" data-extend="${env.id}">Extend +2h</button>`}
+      <button class="quiet danger" data-destroy="${env.id}">Destroy</button>
+    </div>`}
   `;
 
-  el.querySelector('[data-copy]')?.addEventListener('click', async (event) => {
+  el.querySelector('[data-approve]')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
-    try {
-      await navigator.clipboard.writeText(button.getAttribute('data-copy'));
-      button.textContent = 'copied';
-      setTimeout(() => { button.textContent = 'copy'; }, 1400);
-    } catch { notify('Could not copy — the browser blocked clipboard access.', true); }
+    button.disabled = true;
+    button.textContent = 'Merging…';
+    const response = await authed('/api/environments/' + env.id + '/review', {
+      method: 'POST', body: JSON.stringify({ decision: 'approve' }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) notify('Merged. Production is redeploying from the default branch.');
+    else {
+      notify(body.error || 'Merge failed.', true);
+      button.disabled = false; button.textContent = '✓ Approve & merge';
+    }
+  });
+
+  el.querySelector('[data-reject]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1'; button.textContent = 'Confirm reject';
+      setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Reject'; }, 3500);
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'Rejecting…';
+    const response = await authed('/api/environments/' + env.id + '/review', {
+      method: 'POST', body: JSON.stringify({ decision: 'reject' }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) notify('Pull request closed and preview destroyed.');
+    else {
+      notify(body.error || 'Reject failed.', true);
+      button.disabled = false; button.textContent = 'Reject';
+    }
   });
 
   el.querySelector('[data-extend]')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
     button.disabled = true;
-    const response = await authed('/api/environments/' + env.id,
-      { method: 'PATCH', body: JSON.stringify({ ttlMinutes: 120 }) });
+    const response = await authed('/api/environments/' + env.id, {
+      method: 'PATCH', body: JSON.stringify({ ttlMinutes: 120 }),
+    });
     button.disabled = false;
-    if (response.ok) notify(env.slug + ' extended by two hours.');
-    else if (response.status !== 401) notify(await errorFrom(response), true);
+    if (response.ok) notify(env.slug + ' extended by 2 hours.');
+    else notify(await errorFrom(response), true);
   });
 
-  arm(el.querySelector('[data-approve]'), 'Confirm merge', async (button) => {
-    button.textContent = 'Merging…';
-    const response = await authed('/api/environments/' + env.id + '/review',
-      { method: 'POST', body: JSON.stringify({ decision: 'approve' }) });
-    if (response.ok) notify('Merged. Production is redeploying from the default branch.');
-    else if (response.status !== 401) notify(await errorFrom(response), true);
-  });
-
-  arm(el.querySelector('[data-reject]'), 'Confirm reject', async (button) => {
-    button.textContent = 'Rejecting…';
-    const response = await authed('/api/environments/' + env.id + '/review',
-      { method: 'POST', body: JSON.stringify({ decision: 'reject' }) });
-    if (response.ok) notify('Pull request closed and the preview destroyed.');
-    else if (response.status !== 401) notify(await errorFrom(response), true);
-  });
-
-  arm(el.querySelector('[data-destroy]'), 'Confirm destroy', async (button) => {
+  el.querySelector('[data-destroy]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1';
+      button.textContent = 'Confirm destroy';
+      setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Destroy'; }, 3500);
+      return;
+    }
+    button.disabled = true;
     button.textContent = 'Destroying…';
     const response = await authed('/api/environments/' + env.id, { method: 'DELETE' });
-    if (!response.ok && response.status !== 401) notify(await errorFrom(response), true);
+    if (!response.ok && response.status !== 401) {
+      notify(await errorFrom(response), true);
+      button.disabled = false; button.textContent = 'Destroy';
+    }
   });
 
   return el;
 }
 
-function repoBlock(repo, list) {
-  const el = document.createElement('div');
-  el.className = 'repo';
-  const [owner, name] = repo.fullName.split('/');
-
-  el.innerHTML = `
-    <div class="repo-head">
-      <span class="repo-name"><span class="owner">${esc(owner)}/</span>${esc(name)}</span>
-      ${repo.buildPlan ? `<span class="chip">${esc(repo.buildPlan.framework)}</span>` : ''}
-      ${repo.secretCount ? `<span class="chip">${repo.secretCount} secret${repo.secretCount > 1 ? 's' : ''}</span>` : ''}
-      <span class="repo-tools">
-        <select class="policy" data-policy title="How pull requests here are handled">
-          <option value="auto">Preview every PR</option>
-          <option value="trusted">Auto · forks on request</option>
-          <option value="manual">Only on /preview</option>
-        </select>
-        <button class="ghost" data-secrets>Secrets</button>
-        <button class="ghost" data-deploy>Deploy production</button>
-        <button class="ghost danger" data-disconnect>Disconnect</button>
-      </span>
-    </div>
-    <div class="envs"></div>
-  `;
-
-  const body = el.querySelector('.envs');
-  if (list.length === 0) {
-    body.innerHTML = `<div class="repo-empty">No environments yet — open a pull request,
-      or deploy production to put the default branch live.</div>`;
-  } else {
-    for (const env of list) body.appendChild(envRow(env));
-  }
-
-  const policy = el.querySelector('[data-policy]');
-  policy.value = repo.deployPolicy || 'trusted';
-  policy.addEventListener('change', async (event) => {
-    const select = event.currentTarget;
-    const previous = repo.deployPolicy;
-    select.disabled = true;
-    const response = await authed('/api/repos/' + repo.fullName,
-      { method: 'PATCH', body: JSON.stringify({ deployPolicy: select.value }) });
-    select.disabled = false;
-    if (response.ok) {
-      repo.deployPolicy = select.value;
-      notify(repo.fullName + ' — ' + ({
-        auto: 'every pull request gets a preview, forks included.',
-        trusted: 'your branches deploy automatically; forks must comment /preview.',
-        manual: 'nothing deploys until someone comments /preview.',
-      })[select.value]);
-    } else {
-      select.value = previous || 'trusted';
-      if (response.status !== 401) notify(await errorFrom(response), true);
-    }
-  });
-
-  el.querySelector('[data-secrets]').addEventListener('click', () => toggleSecrets(repo, el));
-
-  el.querySelector('[data-deploy]').addEventListener('click', async (event) => {
-    const button = event.currentTarget;
-    button.disabled = true; button.textContent = 'Deploying…';
-    const response = await authed('/api/repos/' + repo.fullName + '/production', { method: 'POST' });
-    button.disabled = false; button.textContent = 'Deploy production';
-    if (response.ok) notify('Production is deploying for ' + repo.fullName + '.');
-    else if (response.status !== 401) notify(await errorFrom(response), true);
-  });
-
-  arm(el.querySelector('[data-disconnect]'), 'Confirm', async () => {
-    const response = await authed('/api/repos/' + repo.fullName, { method: 'DELETE' });
-    if (response.ok) { notify(repo.fullName + ' disconnected.'); loadRepos(); }
-    else if (response.status !== 401) notify(await errorFrom(response), true);
-  });
-
-  return el;
+function historyRow(env) {
+  const lifespanMs = (env.destroyedAt ? new Date(env.destroyedAt) : new Date()) - new Date(env.createdAt);
+  const lifespan = Math.max(1, Math.round(lifespanMs / 60000));
+  return `<div class="hrow">
+    <b>${escapeHtml(env.slug)}</b>
+    <span class="hide-sm">${escapeHtml((env.repo || '').replace('https://github.com/', ''))}${env.branch ? '@' + escapeHtml(env.branch) : ''}</span>
+    <span class="mono">${lifespan}m</span>
+    <span class="mono">${fmtCost(env.cost.accrued)}</span>
+    <span class="hide-sm">${env.destroyedAt ? new Date(env.destroyedAt).toLocaleTimeString() : ''}</span>
+  </div>`;
 }
 
 function render() {
-  const all = [...envs.values()];
-  const live = all.filter((e) => e.status !== 'destroyed');
-  const history = all.filter((e) => e.status === 'destroyed')
+  const all = [...state.values()];
+  const active = all
+    .filter((e) => e.status !== 'destroyed')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const history = all
+    .filter((e) => e.status === 'destroyed')
     .sort((a, b) => new Date(b.destroyedAt || 0) - new Date(a.destroyedAt || 0));
 
-  /* group live environments under their repository */
-  const grouped = new Map();
-  const orphans = [];
-  for (const env of live) {
-    const key = repoOf(env);
-    const match = key && repos.find((r) => r.fullName.toLowerCase() === key.toLowerCase());
-    if (match) {
-      const bucket = grouped.get(match.fullName) || [];
-      bucket.push(env);
-      grouped.set(match.fullName, bucket);
-    } else orphans.push(env);
-  }
-  /* production first, then newest previews */
-  for (const bucket of grouped.values()) {
-    bucket.sort((a, b) =>
-      (b.kind === 'production') - (a.kind === 'production') ||
-      new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  const list = document.getElementById('repoList');
-  list.replaceChildren(
-    ...repos.map((repo) => repoBlock(repo, grouped.get(repo.fullName) || [])));
-  document.getElementById('onboard').style.display = repos.length ? 'none' : 'block';
-
-  const otherWrap = document.getElementById('otherWrap');
-  otherWrap.style.display = orphans.length ? 'block' : 'none';
-  if (orphans.length) {
-    orphans.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    document.getElementById('otherEnvs').replaceChildren(...orphans.map(envRow));
-  }
+  document.getElementById('grid').replaceChildren(...active.map(card));
+  document.getElementById('empty').style.display = active.length ? 'none' : 'block';
 
   document.getElementById('histCount').textContent = history.length;
-  document.getElementById('histCost').textContent =
-    money(history.reduce((sum, e) => sum + e.cost.accrued, 0));
-  document.getElementById('histList').innerHTML = history.slice(0, 40).map((e) => {
-    const life = Math.max(1, Math.round(
-      ((e.destroyedAt ? new Date(e.destroyedAt) : new Date()) - new Date(e.createdAt)) / 60000));
-    return `<div class="hrow">
-      <b>${esc(e.slug)}</b>
-      <span class="hide-sm">${esc((e.repo || '').replace('https://github.com/', ''))}${
-        e.branch ? '@' + esc(e.branch) : ''}</span>
-      <span>${life}m</span>
-      <span>${money(e.cost.accrued)}</span>
-      <span class="hide-sm">${e.destroyedAt ? new Date(e.destroyedAt).toLocaleTimeString() : ''}</span>
-    </div>`;
-  }).join('') || '<div class="repo-empty">Nothing destroyed yet.</div>';
+  document.getElementById('histList').innerHTML =
+    history.slice(0, 30).map(historyRow).join('') ||
+    '<span class="hint">Nothing destroyed yet.</span>';
 
-  updateStats();
+  const burning = all.filter((e) => ['creating', 'building', 'ready'].includes(e.status));
+  document.getElementById('sLive').textContent = active.length;
+  document.getElementById('sBurn').innerHTML =
+    '$' + burning.reduce((sum, e) => sum + e.cost.hourly, 0).toFixed(4) + '<small>/h</small>';
+  document.getElementById('sSpend').textContent =
+    fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
+
+  const times = all.map((e) => e.provisioningSeconds).filter((v) => typeof v === 'number');
+  document.getElementById('sFast').innerHTML = times.length
+    ? Math.min(...times) + '<small>s</small>' : '—';
 }
 
-function updateStats() {
-  const all = [...envs.values()];
-  const live = all.filter((e) => e.status !== 'destroyed');
-  const billing = all.filter(isBilling);
-  const building = live.filter(isWorking).length;
-
-  document.getElementById('sLive').textContent = live.length;
-  document.getElementById('sLiveSub').textContent =
-    live.length === 0 ? 'nothing provisioned'
-      : building ? building + ' still building' : 'all serving traffic';
-
-  const burn = billing.reduce((sum, e) => sum + e.cost.hourly, 0);
-  document.getElementById('sBurn').innerHTML = '$' + burn.toFixed(4) + '<small>/h</small>';
-  document.getElementById('sBurnSub').textContent =
-    burn === 0 ? 'costs nothing while idle' : '≈ ' + money(burn * 24) + ' a day if left running';
-
-  const spent = all.reduce((sum, e) => sum + e.cost.accrued, 0);
-  document.getElementById('sSpend').textContent = money(spent);
-  document.getElementById('sSpendSub').textContent = all.length + ' environments, all time';
-
-  const used = live.length;
-  document.getElementById('sCap').innerHTML = used + '<small> / ' + capacity + '</small>';
-  const meter = document.getElementById('capMeter');
-  const pct = Math.min(100, Math.round((used / capacity) * 100));
-  meter.firstElementChild.style.width = pct + '%';
-  meter.className = 'meter' + (pct >= 90 ? ' bad' : pct >= 70 ? ' warn' : '');
-}
-
-/* Tick costs, elapsed build time and TTLs between server events. */
+/* Advance costs and TTLs locally between server events. */
 setInterval(() => {
   let dirty = false;
-  for (const env of envs.values()) {
-    if (!isBilling(env)) continue;
-    env.cost.accrued += env.cost.hourly / 3600;
-    dirty = true;
-    const row = document.getElementById('env-' + env.id);
-    if (!row) continue;
-    const cost = row.querySelector('[data-cost]');
-    if (cost) cost.textContent = money(env.cost.accrued);
-    if (isWorking(env)) {
-      const timing = row.querySelector('[data-timing] b');
-      if (timing) timing.textContent = duration(elapsed(env));
+  for (const env of state.values()) {
+    if (['creating', 'building', 'ready'].includes(env.status)) {
+      env.cost.accrued += env.cost.hourly / 3600;
+      dirty = true;
+      const costEl = document.querySelector('#env-' + env.id + ' [data-cost]');
+      if (costEl) costEl.textContent = fmtCost(env.cost.accrued);
+      const ttlEl = document.querySelector('#env-' + env.id + ' [data-ttl]');
+      if (ttlEl) ttlEl.textContent = relative(env.expiresAt);
     }
   }
-  if (dirty) updateStats();
+  if (dirty) {
+    const all = [...state.values()];
+    document.getElementById('sSpend').textContent =
+      fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
+  }
 }, 1000);
 
-/* ══════════════════════════════════════════════════════════
-   secrets
-   ══════════════════════════════════════════════════════════ */
-async function toggleSecrets(repo, block) {
-  const open = block.querySelector('.secrets');
-  if (open) { open.remove(); return; }
+/* ── repositories ── */
+async function loadRepos() {
+  const listEl = document.getElementById('repoList');
+  try {
+    const response = await fetch('/api/repos');
+    if (!response.ok) { listEl.innerHTML = '<span class="hint">Unavailable.</span>'; return; }
+    const { repos } = await response.json();
+    if (!repos.length) {
+      listEl.innerHTML = '<span class="hint">No repositories connected yet. Connect one below — Ephemera creates the webhook for you.</span>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for (const repo of repos) {
+      const row = document.createElement('div');
+      row.className = 'repo-row';
+      row.innerHTML = `
+        <span class="name">${escapeHtml(repo.fullName)}</span>
+        ${repo.buildPlan ? `<span class="chip">${escapeHtml(repo.buildPlan.framework)}</span>` : ''}
+        <span class="when">connected ${new Date(repo.connectedAt).toLocaleDateString()}</span>
+        <span class="repo-actions">
+          <select data-policy title="How pull requests in this repository are handled">
+            <option value="auto">Preview every PR</option>
+            <option value="trusted">Auto, forks on request</option>
+            <option value="manual">Only on /preview</option>
+          </select>
+          <button class="quiet" data-secrets>Secrets${repo.secretCount ? ' (' + repo.secretCount + ')' : ''}</button>
+          <button class="quiet" data-deploy>Deploy production</button>
+          <button class="quiet danger" data-disconnect>Disconnect</button>
+        </span>`;
+
+      const policySelect = row.querySelector('[data-policy]');
+      policySelect.value = repo.deployPolicy || 'trusted';
+      policySelect.addEventListener('change', async (event) => {
+        const select = event.currentTarget;
+        const previous = repo.deployPolicy;
+        select.disabled = true;
+        const response = await authed('/api/repos/' + repo.fullName, {
+          method: 'PATCH', body: JSON.stringify({ deployPolicy: select.value }),
+        });
+        select.disabled = false;
+        if (response.ok) {
+          repo.deployPolicy = select.value;
+          notify(repo.fullName + ': ' + ({
+            auto: 'every pull request will get a preview, forks included.',
+            trusted: 'own branches auto-deploy; forks must comment /preview.',
+            manual: 'nothing deploys until someone comments /preview.',
+          })[select.value]);
+        } else {
+          select.value = previous || 'trusted';
+          if (response.status !== 401) notify(await errorFrom(response), true);
+        }
+      });
+
+      row.querySelector('[data-secrets]').addEventListener('click', () => {
+        toggleSecrets(repo.fullName, row);
+      });
+
+      row.querySelector('[data-deploy]').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = 'Deploying…';
+        const response = await authed('/api/repos/' + repo.fullName + '/production', { method: 'POST' });
+        const body = await response.json().catch(() => ({}));
+        button.disabled = false;
+        button.textContent = 'Deploy production';
+        if (response.ok) notify('Production deploying for ' + repo.fullName + ' → ' + body.url);
+        else if (response.status !== 401) notify(body.error || 'Deploy failed.', true);
+      });
+
+      row.querySelector('[data-disconnect]').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        if (button.dataset.armed !== '1') {
+          button.dataset.armed = '1'; button.textContent = 'Confirm';
+          setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Disconnect'; }, 3500);
+          return;
+        }
+        button.disabled = true;
+        const response = await authed('/api/repos/' + repo.fullName, { method: 'DELETE' });
+        if (response.ok) { notify(repo.fullName + ' disconnected.'); loadRepos(); }
+        else if (response.status !== 401) {
+          notify(await errorFrom(response), true);
+          button.disabled = false; button.textContent = 'Disconnect';
+        } else { button.disabled = false; button.textContent = 'Disconnect'; }
+      });
+      listEl.appendChild(row);
+    }
+  } catch {
+    listEl.innerHTML = '<span class="hint">Unavailable.</span>';
+  }
+}
+
+/* Inspect → confirm → connect. Nothing is written to the user's repository. */
+let pendingRepo = null;
+
+function showPlan(repo, plan, docker) {
+  pendingRepo = repo;
+  const box = document.getElementById('detected');
+  const badge = document.getElementById('dFramework');
+  badge.textContent = plan.framework;
+  badge.className = 'badge' + (plan.confidence === 'low' ? ' low' : '');
+  document.getElementById('dReason').textContent =
+    plan.reason + (docker ? ' This repository also contains a Dockerfile, which Ephemera does not use.' : '');
+  document.getElementById('dRuntime').value = plan.runtime;
+  document.getElementById('dPort').value = plan.port;
+  document.getElementById('dDatabase').checked = plan.withDatabase;
+  document.getElementById('dBuild').value = (plan.buildCommands || []).join('\n');
+  document.getElementById('dStart').value = plan.startCommand;
+  document.getElementById('detectError').textContent = '';
+  box.style.display = 'block';
+}
+
+/* ---------- secrets: write-only, masked, scoped ---------- */
+async function toggleSecrets(fullName, row) {
+  const existing = row.nextElementSibling;
+  if (existing && existing.classList.contains('secrets')) { existing.remove(); return; }
 
   const panel = document.createElement('div');
   panel.className = 'secrets';
   panel.innerHTML = '<span class="hint">Loading…</span>';
-  block.appendChild(panel);
+  row.after(panel);
 
-  const response = await authed('/api/repos/' + repo.fullName + '/secrets');
+  const response = await authed('/api/repos/' + fullName + '/secrets');
   if (!response.ok) { panel.innerHTML = '<span class="hint">Unavailable.</span>'; return; }
   const { secrets } = await response.json();
 
   panel.innerHTML = `
-    ${secrets.length ? secrets.map((s) => `
-      <div class="secret-row">
-        <span class="k">${esc(s.key)}</span>
-        <span class="v">${esc(s.preview)}</span>
-        <span class="chip">${esc(s.scope)}</span>
-        <span class="chip">${esc(s.phase)}</span>
-        <button class="ghost danger" data-del="${esc(s.key)}" style="margin-left:auto">Remove</button>
-      </div>`).join('')
-      : '<span class="hint">No secrets yet. Anything added here is injected into every future deployment.</span>'}
-    <div class="form-grid" style="margin-top:14px">
+    ${secrets.length
+      ? secrets.map((s) => `
+        <div class="secret-row">
+          <span class="k">${escapeHtml(s.key)}</span>
+          <span class="v">${escapeHtml(s.preview)}</span>
+          <span class="tag">${escapeHtml(s.scope)}</span>
+          <span class="tag">${escapeHtml(s.phase)}</span>
+          <button class="quiet danger" data-del="${escapeHtml(s.key)}" style="margin-left:auto">Remove</button>
+        </div>`).join('')
+      : '<span class="hint">No secrets yet. Anything you add is injected into every future deployment.</span>'}
+    <div class="form-grid" style="margin-top:12px">
       <label>Name <input type="text" data-k placeholder="STRIPE_SECRET_KEY" /></label>
       <label>Value <input type="text" data-v placeholder="sk_live_…" autocomplete="off" /></label>
       <label>Applies to
@@ -918,31 +850,31 @@ async function toggleSecrets(repo, block) {
           <option value="all">Production &amp; previews</option>
           <option value="production">Production only</option>
           <option value="preview">Previews only</option>
-        </select></label>
+        </select>
+      </label>
       <label>Needed at
         <select data-phase>
           <option value="runtime">Runtime</option>
           <option value="build">Build</option>
           <option value="both">Both</option>
-        </select></label>
+        </select>
+      </label>
     </div>
-    <div class="form-actions">
-      <button type="button" class="primary" data-add>Add secret</button>
-      <span class="form-error" data-err></span>
-    </div>
-    <p class="note"><strong>Encrypted and write-only</strong> — values can be replaced or removed,
-      never read back. <strong>Forks receive no secrets</strong>, because a fork's code is
-      unreviewed and could simply print them.</p>`;
+    <div class="form-actions"><button type="button" data-add>Add secret</button>
+      <span class="form-error" data-err></span></div>
+    <p class="note"><strong>Stored encrypted and write-only</strong> — values can be replaced or removed
+      but never read back. <strong>Pull requests from forks receive no secrets at all</strong>, because
+      fork code is untrusted and could simply print them.</p>`;
 
-  panel.querySelectorAll('[data-del]').forEach((button) =>
+  panel.querySelectorAll('[data-del]').forEach((button) => {
     button.addEventListener('click', async () => {
       button.disabled = true;
       const key = button.getAttribute('data-del');
-      const r = await authed('/api/repos/' + repo.fullName + '/secrets/' + encodeURIComponent(key),
-        { method: 'DELETE' });
-      if (r.ok) { notify(key + ' removed.'); loadRepos(); }
-      else { button.disabled = false; notify(await errorFrom(r), true); }
-    }));
+      const r = await authed('/api/repos/' + fullName + '/secrets/' + encodeURIComponent(key), { method: 'DELETE' });
+      if (r.ok) { notify(key + ' removed.'); panel.remove(); toggleSecrets(fullName, row); loadRepos(); }
+      else { button.disabled = false; notify('Could not remove ' + key, true); }
+    });
+  });
 
   panel.querySelector('[data-add]').addEventListener('click', async (event) => {
     const button = event.currentTarget;
@@ -952,7 +884,7 @@ async function toggleSecrets(repo, block) {
     const value = panel.querySelector('[data-v]').value;
     if (!key || !value) { errorEl.textContent = 'Both a name and a value are required.'; return; }
     button.disabled = true;
-    const r = await authed('/api/repos/' + repo.fullName + '/secrets', {
+    const r = await authed('/api/repos/' + fullName + '/secrets', {
       method: 'PUT',
       body: JSON.stringify({
         key, value,
@@ -960,45 +892,29 @@ async function toggleSecrets(repo, block) {
         phase: panel.querySelector('[data-phase]').value,
       }),
     });
+    const body = await r.json().catch(() => ({}));
     button.disabled = false;
-    if (r.ok) { notify(key + ' saved.'); loadRepos(); }
-    else if (r.status !== 401) errorEl.textContent = await errorFrom(r);
+    if (r.ok) { notify(key + ' saved.'); panel.remove(); toggleSecrets(fullName, row); loadRepos(); }
+    else if (r.status !== 401) errorEl.textContent = body.error || 'Could not save.';
   });
 }
-
-/* ══════════════════════════════════════════════════════════
-   connect flow
-   ══════════════════════════════════════════════════════════ */
-let pendingRepo = null;
 
 document.getElementById('repoForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const input = document.getElementById('repoInput');
-  if (!input.value.trim()) return;
+  const value = input.value.trim();
+  if (!value) return;
   const button = document.getElementById('inspectBtn');
-  button.disabled = true; button.textContent = 'Inspecting…';
-  const response = await authed('/api/repos/inspect',
-    { method: 'POST', body: JSON.stringify({ repo: input.value.trim() }) });
-  button.disabled = false; button.textContent = 'Inspect';
+  button.disabled = true;
+  button.textContent = 'Inspecting…';
+  const response = await authed('/api/repos/inspect', {
+    method: 'POST', body: JSON.stringify({ repo: value }),
+  });
+  button.disabled = false;
+  button.textContent = 'Inspect';
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    if (response.status !== 401) notify(body.error || 'Could not read that repository.', true);
-    return;
-  }
-  pendingRepo = body.repo;
-  const plan = body.plan;
-  const badge = document.getElementById('dFramework');
-  badge.textContent = plan.framework;
-  badge.className = 'badge' + (plan.confidence === 'low' ? ' low' : '');
-  document.getElementById('dReason').textContent = plan.reason +
-    (body.docker ? ' This repository also has a Dockerfile, which Ephemera does not use.' : '');
-  document.getElementById('dRuntime').value = plan.runtime;
-  document.getElementById('dPort').value = plan.port;
-  document.getElementById('dDatabase').checked = plan.withDatabase;
-  document.getElementById('dBuild').value = (plan.buildCommands || []).join('\n');
-  document.getElementById('dStart').value = plan.startCommand;
-  document.getElementById('detectError').textContent = '';
-  document.getElementById('detected').style.display = 'block';
+  if (response.ok) showPlan(body.repo, body.plan, body.docker);
+  else if (response.status !== 401) notify(body.error || 'Could not read that repository.', true);
 });
 
 document.getElementById('cancelBtn').addEventListener('click', () => {
@@ -1011,107 +927,92 @@ document.getElementById('confirmBtn').addEventListener('click', async (event) =>
   const button = event.currentTarget;
   const errorEl = document.getElementById('detectError');
   errorEl.textContent = '';
-  button.disabled = true; button.textContent = 'Connecting…';
+  button.disabled = true;
+  button.textContent = 'Connecting…';
+
+  const buildPlan = {
+    framework: document.getElementById('dFramework').textContent,
+    runtime: document.getElementById('dRuntime').value.trim(),
+    port: Number(document.getElementById('dPort').value) || 3000,
+    withDatabase: document.getElementById('dDatabase').checked,
+    buildCommands: document.getElementById('dBuild').value.split('\n').map((l) => l.trim()).filter(Boolean),
+    startCommand: document.getElementById('dStart').value.trim(),
+    deployFiles: ['./'],
+  };
+
   const response = await authed('/api/repos', {
-    method: 'POST',
-    body: JSON.stringify({
-      repo: pendingRepo,
-      buildPlan: {
-        framework: document.getElementById('dFramework').textContent,
-        runtime: document.getElementById('dRuntime').value.trim(),
-        port: Number(document.getElementById('dPort').value) || 3000,
-        withDatabase: document.getElementById('dDatabase').checked,
-        buildCommands: document.getElementById('dBuild').value.split('\n')
-          .map((l) => l.trim()).filter(Boolean),
-        startCommand: document.getElementById('dStart').value.trim(),
-        deployFiles: ['./'],
-      },
-    }),
+    method: 'POST', body: JSON.stringify({ repo: pendingRepo, buildPlan }),
   });
-  button.disabled = false; button.textContent = 'Connect repository';
+  button.disabled = false;
+  button.textContent = 'Connect repository';
+  const body = await response.json().catch(() => ({}));
   if (response.ok) {
-    notify(pendingRepo + ' connected. Pull requests now get previews — nothing added to your repo.');
+    notify(pendingRepo + ' connected. Pull requests now get preview environments — no files needed in the repo.');
     document.getElementById('detected').style.display = 'none';
     document.getElementById('repoInput').value = '';
     pendingRepo = null;
     loadRepos();
-  } else if (response.status !== 401) errorEl.textContent = await errorFrom(response);
+  } else if (response.status !== 401) {
+    errorEl.textContent = body.error || 'Connect failed.';
+  }
 });
 
+/* ── create form ── */
 document.getElementById('createForm').addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const errorEl = document.getElementById('createError');
   const button = document.getElementById('createBtn');
   errorEl.textContent = '';
+
   const data = new FormData(form);
   const buildCommands = String(data.get('buildCommands') || '')
-    .split('\n').map((l) => l.trim()).filter(Boolean);
+    .split('\n').map((line) => line.trim()).filter(Boolean);
+
+  const body = {
+    slug: data.get('slug'),
+    repo: data.get('repo'),
+    ...(data.get('branch') ? { branch: data.get('branch') } : {}),
+    runtime: data.get('runtime'),
+    port: Number(data.get('port')) || 3000,
+    withDatabase: data.get('withDatabase') === 'on',
+    ttlMinutes: Number(data.get('ttlMinutes')),
+    ...(buildCommands.length ? { buildCommands } : {}),
+    ...(data.get('startCommand') ? { startCommand: data.get('startCommand') } : {}),
+  };
 
   button.disabled = true;
   const response = await authed('/api/environments', {
-    method: 'POST',
-    body: JSON.stringify({
-      slug: data.get('slug'),
-      repo: data.get('repo'),
-      ...(data.get('branch') ? { branch: data.get('branch') } : {}),
-      runtime: data.get('runtime'),
-      port: Number(data.get('port')) || 3000,
-      withDatabase: data.get('withDatabase') === 'on',
-      ttlMinutes: Number(data.get('ttlMinutes')),
-      ...(buildCommands.length ? { buildCommands } : {}),
-      ...(data.get('startCommand') ? { startCommand: data.get('startCommand') } : {}),
-    }),
+    method: 'POST', body: JSON.stringify(body),
   });
   button.disabled = false;
   const payload = await response.json().catch(() => ({}));
-  if (response.ok) { notify('Creating "' + payload.slug + '" → ' + payload.url); form.reset(); }
-  else if (response.status !== 401) {
-    errorEl.textContent = payload.details ? payload.details.join('\n') : (payload.error || 'Failed.');
+  if (response.ok) {
+    notify('Environment "' + payload.slug + '" is provisioning. URL: ' + payload.url);
+    form.reset();
+  } else if (response.status !== 401) {
+    errorEl.textContent = payload.details ? payload.details.join('\n') : (payload.error || 'Create failed.');
   }
 });
 
-/* ══════════════════════════════════════════════════════════
-   data
-   ══════════════════════════════════════════════════════════ */
-async function loadRepos() {
-  try {
-    const response = await fetch('/api/repos');
-    if (!response.ok) return;
-    repos = (await response.json()).repos || [];
-    render();
-  } catch { /* transient */ }
-}
-
-async function loadEnvironments() {
-  try {
-    const response = await fetch('/api/environments?all=true');
-    if (!response.ok) return;
-    for (const env of (await response.json()).environments) envs.set(env.id, env);
-    render();
-  } catch { /* transient; SSE retries */ }
-}
-
+/* ── live feed ── */
 function connect() {
   const source = new EventSource('/api/stream');
   const dot = document.getElementById('dot');
   const text = document.getElementById('liveText');
+
   source.addEventListener('open', () => { dot.classList.add('on'); text.textContent = 'live'; });
-  source.addEventListener('snapshot', () => loadEnvironments());
+  source.addEventListener('snapshot', () => { seed(); });
   source.addEventListener('environment', (event) => {
     const env = JSON.parse(event.data);
-    const before = envs.get(env.id);
-    envs.set(env.id, env);
-    if (before && isWorking(before) && env.status === 'ready') {
-      notify(env.slug + ' is live — ' + env.url);
-    }
+    state.set(env.id, env);
     render();
   });
   source.addEventListener('error', () => { dot.classList.remove('on'); text.textContent = 'reconnecting'; });
 }
 
+seed();
 loadRepos();
-loadEnvironments();
 connect();
 </script>
 </body>

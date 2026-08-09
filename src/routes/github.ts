@@ -18,7 +18,10 @@ import {
   destroyEnvironment,
 } from '../environments/service.js';
 import * as store from '../environments/store.js';
+import type { EnvironmentRecord } from '../environments/store.js';
 import { getDeployPolicy, getRepoPlan } from '../github/repos.js';
+import { events } from '../environments/service.js';
+import { reportForPullRequest } from '../migrations/index.js';
 import { deployProduction } from '../environments/production.js';
 import { inspectRepo } from '../github/inspect.js';
 import { sanitiseSlug } from '../zerops/manifest.js';
@@ -238,7 +241,40 @@ async function deployOnRequest(fullName: string, number: number): Promise<void> 
   );
 }
 
+/**
+ * When a preview becomes ready, analyse any migrations the pull request
+ * changed - and measure them against that environment's own database.
+ *
+ * This is deliberately tied to `ready` rather than to the webhook: before the
+ * database exists there is nothing to measure, and a measured duration is the
+ * entire point.
+ */
+function watchForMigrations(): void {
+  events.on('ready', (record: EnvironmentRecord) => {
+    if (!record.prRepo || !record.prNumber) return;
+    void (async () => {
+      try {
+        const result = await reportForPullRequest(
+          record.prRepo!,
+          record.prNumber!,
+          record.branch ?? 'HEAD',
+          { dbHostname: record.dbHostname },
+        );
+        if (!result) return; // no migrations in this pull request
+        await comment(record.prRepo!, record.prNumber!, result.body);
+        console.log(
+          `[ephemera] migration analysis posted on ${record.prRepo}#${record.prNumber} ` +
+            `(worst: ${result.severity})`,
+        );
+      } catch (error) {
+        console.error('[ephemera] migration analysis failed:', error);
+      }
+    })();
+  });
+}
+
 export async function registerGithubRoutes(app: FastifyInstance): Promise<void> {
+  watchForMigrations();
   // Capture the raw body so webhook signatures can be verified byte-for-byte.
   //
   // This parser is **global** - registering it replaces Fastify's built-in JSON

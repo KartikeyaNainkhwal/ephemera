@@ -21,6 +21,8 @@ import {
   SlugInUseError,
 } from '../environments/service.js';
 import { reconcileOrphans } from '../environments/reconcile.js';
+import { analyseSql } from '../migrations/analyse.js';
+import { analysePullRequest, renderComment, worstSeverity } from '../migrations/index.js';
 import * as store from '../environments/store.js';
 import type { EnvironmentRecord } from '../environments/store.js';
 import {
@@ -148,6 +150,58 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   app.post('/api/reconcile', async (request, reply) => {
     if (!requireKey(request, reply)) return;
     return reconcileOrphans();
+  });
+
+  /**
+   * Analyse SQL directly. Useful for trying a statement without opening a
+   * pull request, and it is how the rules can be exercised from a terminal.
+   */
+  app.post('/api/migrations/analyse', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
+    const sql = (request.body as { sql?: unknown } | null)?.sql;
+    if (typeof sql !== 'string' || sql.trim() === '') {
+      return reply.code(400).send({ error: '"sql" is required.' });
+    }
+    if (sql.length > 500_000) {
+      return reply.code(400).send({ error: 'SQL is limited to 500KB.' });
+    }
+    return analyseSql(sql);
+  });
+
+  /**
+   * Analyse the migrations in a pull request, optionally measuring them
+   * against a live environment's database.
+   */
+  app.post('/api/environments/:id/migrations', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const record = await store.getById(id);
+    if (!record) return reply.code(404).send({ error: 'Environment not found.' });
+    if (!record.prRepo || !record.prNumber) {
+      return reply
+        .code(400)
+        .send({ error: 'This environment is not attached to a pull request.' });
+    }
+
+    const measure =
+      (request.body as { measure?: unknown } | null)?.measure !== false &&
+      record.status === 'ready';
+
+    const report = await analysePullRequest(
+      record.prRepo,
+      record.prNumber,
+      record.branch ?? 'HEAD',
+      { dbHostname: measure ? record.dbHostname : null },
+    );
+    if (!report) return { migrations: 0, message: 'No migration files changed in this pull request.' };
+
+    return {
+      migrations: report.files.length,
+      severity: worstSeverity(report),
+      measured: measure,
+      files: report.files,
+      comment: renderComment(report),
+    };
   });
 
   app.get('/api/health', async () => ({
