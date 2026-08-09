@@ -352,8 +352,8 @@ export async function destroyEnvironment(id: string): Promise<EnvironmentRecord 
     ? await store.setStatus(
         record.id,
         'failed',
-        `Services still present after teardown: ${surviving.join(', ')}. ` +
-          `They may still be billing and need manual removal.`,
+        `Teardown has not finished yet: ${surviving.join(', ')} are still present. ` +
+          `The reconciler will keep retrying until they are gone — no action needed.`,
       )
     : await store.setStatus(record.id, 'destroyed');
 
@@ -407,7 +407,7 @@ export async function resumeInFlight(): Promise<number> {
  */
 async function waitForRemoval(
   hostnames: string[],
-  timeoutMs = 90_000,
+  timeoutMs = 5 * 60_000,
   intervalMs = 5_000,
 ): Promise<string[]> {
   const deadline = Date.now() + timeoutMs;

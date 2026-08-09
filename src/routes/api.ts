@@ -20,6 +20,7 @@ import {
   extendEnvironment,
   SlugInUseError,
 } from '../environments/service.js';
+import { reconcileOrphans } from '../environments/reconcile.js';
 import * as store from '../environments/store.js';
 import type { EnvironmentRecord } from '../environments/store.js';
 import {
@@ -138,6 +139,15 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     const record = await destroyEnvironment(id);
     if (!record) return reply.code(404).send({ error: 'Environment not found.' });
     return serialise(record);
+  });
+
+  /**
+   * Force an orphan sweep. Runs automatically on the reaper interval; exposed
+   * so a leak can be resolved immediately rather than waited out.
+   */
+  app.post('/api/reconcile', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
+    return reconcileOrphans();
   });
 
   app.get('/api/health', async () => ({

@@ -8,6 +8,7 @@
  */
 
 import { config } from '../config.js';
+import { reconcileOrphans } from './reconcile.js';
 import { destroyEnvironment } from './service.js';
 import * as store from './store.js';
 
@@ -43,6 +44,10 @@ export function startReaper(): void {
   timer = setInterval(() => {
     void reapExpired().catch((error) =>
       console.error('[ephemera] reaper cycle failed:', error),
+    );
+    // Guarantee teardown: remove anything a failed delete left behind.
+    void reconcileOrphans().catch((error) =>
+      console.error('[ephemera] reconcile cycle failed:', error),
     );
   }, config.reaperIntervalMs);
 
