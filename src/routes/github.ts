@@ -192,8 +192,10 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
           fullName,
           number,
           `**Ephemera** — environment torn down.\n\n` +
-            `The application and its dedicated PostgreSQL database have been ` +
-            `destroyed and are no longer billing.` +
+            (destroyed?.dbHostname
+              ? 'The application and its dedicated PostgreSQL database have been '
+              : 'The application container has been ') +
+            `destroyed and is no longer billing.` +
             (spent ? `\n\nTotal cost of this preview: **${spent}**.` : ''),
         );
       }
@@ -255,14 +257,17 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
 
       // The URL is known before the environment exists, so the reviewer gets a
       // clickable link immediately rather than after a poll completes.
+      const stack = plan ? `Detected as **${plan.framework}**. ` : '';
+      const infra = environment.dbHostname
+        ? 'A dedicated application container and its own PostgreSQL database are'
+        : 'A dedicated application container is';
       await comment(
         fullName,
         number,
         `**Ephemera** — preview environment provisioning.\n\n` +
           `**${environment.url}**\n\n` +
-          `A dedicated application container and its own PostgreSQL database ` +
-          `are being created for this pull request. The link works as soon as ` +
-          `the app answers — typically under three minutes.\n\n` +
+          `${stack}${infra} being created for this pull request. The link works ` +
+          `as soon as the app answers — typically under two minutes.\n\n` +
           `It is destroyed automatically when this pull request closes.`,
       );
 

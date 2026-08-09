@@ -18,13 +18,22 @@ AI coding agents have the same problem in a sharper form. They are handed sandbo
 
 ## What it does
 
+**Your repository needs no configuration files at all.**
+
 ```
-Connect a repository          →  Ephemera creates the webhook for you
-Open a pull request           →  bot comment with the URL, before the infra exists
-      ~90 seconds             →  app + its own PostgreSQL, serving traffic
-Push to the branch            →  environment replaced with the new commit
-Close / merge the PR          →  destroyed, final cost reported on the PR
+Paste a repository URL   →  Ephemera reads it and proposes a build plan
+                            "Static site — found index.html with no build tooling"
+Confirm (or edit)        →  the webhook is created for you; plan is stored
+Open a pull request      →  bot comment with the URL, before the infra exists
+      ~70-90 seconds     →  app (+ its own PostgreSQL) serving traffic
+Push to the branch       →  environment replaced at the new commit
+Close / merge            →  destroyed, final cost reported on the PR
 ```
+
+Detection covers Next.js, Nuxt, SvelteKit, Astro, Vite, Create React App,
+plain Node, Django/Python, Go, and static sites, choosing the package manager
+from the lockfile. Anything unrecognised yields an **editable** plan rather
+than a failure — an editable wrong guess beats an error.
 
 - **Pull requests** — connect a repo from the dashboard; webhooks, comments and teardown are automatic.
 - **Agents** — an MCP server exposes `create_environment`, `get_environment`, `list_environments`, `destroy_environment`.
@@ -70,7 +79,11 @@ Each environment is **two services** inside one long-lived Zerops project:
 
 **Every environment gets its own database.** Measured at **+7 seconds** versus sharing one. Isolation is effectively free, so there is no reason not to.
 
-**Mutations go through `zcli`; reads go through the REST API.** Zerops documents no REST endpoint for Import YAML, so creation and deletion use the CLI. Status and service inventory come from `GET /project/{id}/service-stack`, which accepts the Personal Access Token directly as a bearer token.
+**Ephemera builds from source rather than using `buildFromGit`.** This is the central architectural decision. Zerops' `buildFromGit` reads build instructions from a `zerops.yaml` **committed in the repository root** — the import YAML's `zeropsYaml` field cannot supply them. A repository without that file produces a service that is created but *never built*, with no error surfaced anywhere.
+
+Demanding a config file from every user is the wrong product, so provisioning is: create the services empty → download the repository archive **at the pull request's exact commit SHA** → generate a `zerops.yml` outside the working tree → `zcli push --zerops-yaml-path` → enable the subdomain. Three things follow that `buildFromGit` could not do: repositories need no Ephemera files, **private repositories work** (the archive is fetched with a token), and pinning to a SHA removes a real race where GitHub's raw CDN served stale config for a branch that had just moved.
+
+**Mutations go through `zcli`; reads go through the REST API.** Status and service inventory come from `GET /project/{id}/service-stack`, which accepts the Personal Access Token directly as a bearer token.
 
 **State is reconciled, not assumed.** Readiness means the app answered HTTP, not that the platform said ACTIVE. Teardown is confirmed by polling until the services are actually gone — an exit code is not evidence. On boot, the control plane re-attaches watchers to any environment caught mid-provision or mid-teardown by a restart, so nothing sits in `creating` forever and nothing keeps billing after a crash.
 
@@ -140,9 +153,10 @@ curl -X POST https://<control-plane>/api/environments \
   -d '{"slug":"demo","repo":"https://github.com/<you>/<repo>","branch":"main"}'
 ```
 
-### Per-repository configuration
+### Overriding the detected plan
 
-Drop an `ephemera.json` in the repository root; Ephemera reads it from the branch under review:
+Nothing is required. If you want per-branch control, an `ephemera.json` in the
+repository root overrides the stored plan for that branch:
 
 ```json
 {
@@ -177,6 +191,7 @@ Drop an `ephemera.json` in the repository root; Ephemera reads it from the branc
 
 Each of these was found empirically against a live Zerops project, and each one breaks silently:
 
+0. **`buildFromGit` requires a `zerops.yaml` in the repository root.** Without one, no build container is created at all and the service sits in `READY_TO_DEPLOY` indefinitely — silently. This is why Ephemera builds from source instead.
 1. **Hostnames**: max 25 characters, lowercase `a-z` and `0-9` only.
 2. **`envSecrets` does not override a repository's own `zerops.yml`.** Per-environment databases require the `zeropsYaml` field — as a **nested object**, not a string.
 3. **A Zerops PostgreSQL always exposes `dbName = db` and `user = db`.** Only the hostname varies.
@@ -194,7 +209,8 @@ Against a live Zerops project, 9 August 2026:
 
 | operation | time |
 |---|---|
-| **pull request opened → preview serving traffic** | **84–104 s** |
+| **pull request opened → preview serving traffic** | **70–104 s** |
+| zero-config static site (no files in the repo) | **72 s** |
 | environment created via API → serving traffic | 90 s |
 | three environments created in parallel | 103 s, 109 s, 118 s |
 | environment destroyed | ~26 s |
@@ -222,7 +238,8 @@ src/
   security.ts            admin-key auth + rate limiting
   db.ts                  PostgreSQL pool and schema
   zerops/
-    manifest.ts          environment spec → Zerops Import YAML   (+ tests)
+    manifest.ts          environment spec → Import YAML + zerops.yml  (+ tests)
+    deploy.ts            archive download → generated config → zcli push
     cli.ts               zcli wrapper - all mutations
     client.ts            REST reads + behavioural probe
   environments/
@@ -231,7 +248,11 @@ src/
     reaper.ts            TTL enforcement
     cost.ts              cost model                              (+ tests)
     validate.ts          request validation                      (+ tests)
-  github/repos.ts        repository connect/disconnect (webhook management)
+  detect/detect.ts       framework detection                     (+ tests)
+  github/
+    inspect.ts           read a repo through the API, propose a plan
+    repos.ts             connect/disconnect, webhook management, stored plans
+    name.ts              repository-name parsing                 (+ tests)
   routes/
     api.ts               environments API
     repos.ts             repository-connection API
