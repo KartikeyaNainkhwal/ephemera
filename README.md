@@ -81,6 +81,9 @@ Each of these was found empirically, and each one silently breaks things:
 5. **The `ZEROPS_` env prefix is reserved** and rejected on import. Ephemera's variables use `EPHEMERA_`.
 6. **`enableSubdomainAccess` is a no-op when a service is created before it has code**, because no ports are known yet. Enable it after the first deploy.
 7. **`@zerops/zcli` ships `bin/zcli.js`**, a Node launcher — not an executable binary. It is invoked through `process.execPath`.
+8. **A trailing `.git` breaks `buildFromGit` silently.** GitHub's `clone_url` ends in `.git`, giving `…/repo.git@feature/x`. Zerops *accepts* this at import time, then the build never starts and the service sits in `READY_TO_DEPLOY` with no app version and no error. Strip the suffix and slashed branch names work fine.
+9. **`zcli` can exit non-zero after a successful operation** (`last command has finished with error`). Both import and delete are therefore verified against project state rather than exit status — an early "destroyed" environment had in fact survived and was still billing.
+10. **Environment variables can be written via `POST /service-stack/{id}/user-data`** with `{key, content}`. This endpoint is absent from the public API reference; `POST /user-data` returns 404.
 
 ---
 
@@ -158,11 +161,17 @@ Against a live Zerops project, 9 August 2026:
 
 | operation | time |
 |---|---|
-| environment created → serving traffic | **90–120 s** |
+| **pull request opened → preview serving traffic** | **84–104 s** |
+| environment created via API → serving traffic | 90 s |
 | three environments created in parallel | 103 s, 109 s, 118 s |
 | environment destroyed | ~26 s |
 | cost of one environment | **$0.0040 / hour** |
-| cost of a 3-minute preview | **$0.0002** |
+| cost of a complete preview cycle | **$0.00119** (reported by Ephemera on the pull request) |
+
+Verified against a live pull request on
+[KartikeyaNainkhwal/ephemera-demo#1](https://github.com/KartikeyaNainkhwal/ephemera-demo/pull/1):
+opening it produced a running application on its own PostgreSQL database showing
+that branch's changes, and closing it destroyed both and reported the cost.
 
 ---
 
