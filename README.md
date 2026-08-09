@@ -24,11 +24,15 @@ AI coding agents have the same problem in a sharper form. They are handed sandbo
 Paste a repository URL   →  Ephemera reads it and proposes a build plan
                             "Static site — found index.html with no build tooling"
 Confirm (or edit)        →  the webhook is created for you; plan is stored
+Deploy production        →  the default branch gets a permanent environment
 Open a pull request      →  bot comment with the URL, before the infra exists
-      ~70-90 seconds     →  app (+ its own PostgreSQL) serving traffic
-Push to the branch       →  environment replaced at the new commit
-Close / merge            →  destroyed, final cost reported on the PR
+      ~1-4 minutes       →  app (+ its own PostgreSQL) serving traffic
+Review it, then          →  Approve & merge, or Reject — from the dashboard
+Approve                  →  merged on GitHub, preview destroyed,
+                            production redeployed from the new default branch
 ```
+
+You never open GitHub to merge, and you never open Zerops. One screen, one decision.
 
 Detection covers Next.js, Nuxt, SvelteKit, Astro, Vite, Create React App,
 plain Node, Django/Python, Go, and static sites, choosing the package manager
@@ -39,7 +43,10 @@ than a failure — an editable wrong guess beats an error.
 - **Agents** — an MCP server exposes `create_environment`, `get_environment`, `list_environments`, `destroy_environment`.
 - **Dashboard** — a live console: create environments, extend or destroy them, connect repositories, watch cost accrue per second, browse history.
 - **API** — everything above is one authenticated HTTP API.
-- **Reaper** — anything past its TTL is destroyed automatically, including failed environments; protected hostnames can never be reaped.
+- **Production** — the default branch gets a permanent environment, exempt from the TTL reaper and the capacity cap, redeployed automatically on merge.
+- **Secrets** — per-repository, encrypted at rest, write-only, scoped to production/preview and to build/runtime. Real apps with API keys work.
+- **Migrations** — `initCommands` run after deploy and before start, so a preview's database has a schema.
+- **Reaper** — anything past its TTL is destroyed automatically, including failed environments; production and protected hostnames are never reaped.
 
 ## Security model
 
@@ -51,6 +58,30 @@ Ephemera v1 is **deliberately single-tenant**: you deploy it into your own Zerop
 - A **hard capacity cap** (`MAX_LIVE_ENVIRONMENTS`, default 10) bounds the maximum possible bill, and a per-IP rate limit stops accidental creation loops.
 - Database credentials never pass through the control plane — environments receive them as `${hostname_password}` references resolved by Zerops at deploy time.
 - The reaper refuses to touch `PROTECTED_HOSTNAMES`, so a misconfigured TTL cannot destroy the control plane itself.
+
+### Secrets
+
+Real applications need API keys, and handing them to a preview is where preview
+platforms have historically gone wrong.
+
+- **Encrypted at rest** with AES-256-GCM; the key is derived with scrypt from
+  `EPHEMERA_SECRET_KEY` and never stored. GCM is authenticated, so a tampered
+  value fails to decrypt rather than being injected into a build.
+- **Write-only.** Values can be set, replaced and deleted, but never read back
+  through the API. The dashboard shows a mask (`sk••••••90`), and short values
+  are masked entirely.
+- **Scoped** to `production`, `preview`, or both — production credentials do
+  not reach previews unless you say so.
+- **Phased** into build-time and runtime, because `NEXT_PUBLIC_*` is needed
+  while building and a database URL is not.
+- **Forks receive no secrets at all.** A pull request from a fork runs code
+  nobody has reviewed; injecting real credentials there is the *preview
+  deployment secret leakage* attack, where the PR simply prints them. Fork
+  previews still build — they just get nothing sensitive, and the PR comment
+  says so.
+- Names Ephemera manages (`DB_HOST`, `DATABASE_URL`, …) and the reserved
+  `ZEROPS_` prefix are rejected with an explanation rather than silently
+  breaking the deploy.
 
 Deliberately **not** built yet, and documented rather than half-shipped: GitHub OAuth sign-in, multi-user workspaces, per-user permissions. See the roadmap.
 
@@ -139,6 +170,10 @@ Open the dashboard, enter `owner/name`, press Connect. Ephemera creates (or adop
 | `GET` | `/api/repos` | public¹ | list connected repositories |
 | `POST` | `/api/repos` | key | connect a repository (`{"repo":"owner/name"}`) |
 | `DELETE` | `/api/repos/:owner/:name` | key | disconnect a repository |
+| `POST` | `/api/environments/:id/review` | key | approve (merge) or reject (close) the pull request |
+| `GET`/`PUT` | `/api/repos/:owner/:name/secrets` | key | list masked secrets / set one |
+| `DELETE` | `/api/repos/:owner/:name/secrets/:key` | key | remove a secret |
+| `POST` | `/api/repos/:owner/:name/production` | key | deploy or redeploy production |
 | `POST` | `/webhooks/github` | HMAC | GitHub events |
 | `GET` | `/api/health` | public | liveness + running version |
 
@@ -213,6 +248,7 @@ Against a live Zerops project, 9 August 2026:
 | zero-config static site (no files in the repo) | **72 s** |
 | environment created via API → serving traffic | 90 s |
 | three environments created in parallel | 103 s, 109 s, 118 s |
+| production deploy / redeploy on merge | 204 s |
 | environment destroyed | ~26 s |
 | cost of one environment | **$0.0040 / hour** |
 | cost of a complete preview cycle | **$0.00119** (reported on the pull request) |
@@ -249,7 +285,12 @@ src/
     cost.ts              cost model                              (+ tests)
     validate.ts          request validation                      (+ tests)
   detect/detect.ts       framework detection                     (+ tests)
+  secrets/
+    crypto.ts            AES-256-GCM encryption at rest          (+ tests)
+    store.ts             scoped, write-only secret storage
+  environments/production.ts   permanent production environments
   github/
+    review.ts            merge / close a pull request
     inspect.ts           read a repo through the API, propose a plan
     repos.ts             connect/disconnect, webhook management, stored plans
     name.ts              repository-name parsing                 (+ tests)
@@ -266,6 +307,8 @@ infra/control-plane.yml  import manifest for the control plane itself
 ## Roadmap
 
 - **GitHub App + OAuth sign-in** — multi-user, multi-workspace; the reason v1 is honest about being single-tenant.
+- **More backing services** — Redis/Valkey, object storage and queues are all Zerops service types; today an environment gets an app and PostgreSQL.
+- **Monorepo support** — build a subdirectory rather than the repository root.
 - GitLab and Bitbucket webhooks.
 - Database seed snapshots, so previews start with realistic data.
 - Build/runtime log streaming into the dashboard.
