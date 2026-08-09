@@ -18,6 +18,7 @@ import { resumeInFlight } from './environments/service.js';
 import { registerApiRoutes } from './routes/api.js';
 import { registerGithubRoutes } from './routes/github.js';
 import { registerRepoRoutes } from './routes/repos.js';
+import { registerSecretRoutes } from './routes/secrets.js';
 import { registerStreamRoutes } from './routes/stream.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
   await registerStreamRoutes(app);
   await registerGithubRoutes(app);
   await registerRepoRoutes(app);
+  await registerSecretRoutes(app);
 
   const resumed = await resumeInFlight();
   if (resumed > 0) {

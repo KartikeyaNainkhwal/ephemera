@@ -18,6 +18,9 @@ export type EnvironmentStatus =
 
 export type EnvironmentSource = 'api' | 'github' | 'agent';
 
+/** A preview dies with its pull request; production is permanent. */
+export type EnvironmentKind = 'preview' | 'production';
+
 export interface EnvironmentRecord {
   id: string;
   slug: string;
@@ -27,6 +30,7 @@ export interface EnvironmentRecord {
   repo: string;
   branch: string | null;
   source: EnvironmentSource;
+  kind: EnvironmentKind;
   prNumber: number | null;
   prRepo: string | null;
   title: string | null;
@@ -47,6 +51,7 @@ interface Row {
   repo: string;
   branch: string | null;
   source: EnvironmentSource;
+  kind: EnvironmentKind;
   pr_number: number | null;
   pr_repo: string | null;
   title: string | null;
@@ -68,6 +73,7 @@ function toRecord(row: Row): EnvironmentRecord {
     repo: row.repo,
     branch: row.branch,
     source: row.source,
+    kind: row.kind ?? 'preview',
     prNumber: row.pr_number,
     prRepo: row.pr_repo,
     title: row.title,
@@ -89,6 +95,7 @@ export interface InsertEnvironment {
   repo: string;
   branch: string | null;
   source: EnvironmentSource;
+  kind?: EnvironmentKind;
   prNumber: number | null;
   prRepo: string | null;
   title: string | null;
@@ -99,8 +106,8 @@ export async function insert(input: InsertEnvironment): Promise<EnvironmentRecor
   const { rows } = await pool.query<Row>(
     `INSERT INTO environments
        (id, slug, app_hostname, db_hostname, url, repo, branch, source,
-        pr_number, pr_repo, title, status, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'creating',$12)
+        pr_number, pr_repo, title, status, expires_at, kind)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'creating',$12,$13)
      RETURNING *`,
     [
       input.id,
@@ -115,6 +122,7 @@ export async function insert(input: InsertEnvironment): Promise<EnvironmentRecor
       input.prRepo,
       input.title,
       input.expiresAt,
+      input.kind ?? 'preview',
     ],
   );
   return toRecord(rows[0]!);
@@ -194,6 +202,7 @@ export async function listExpired(): Promise<EnvironmentRecord[]> {
   const { rows } = await pool.query<Row>(
     `SELECT * FROM environments
       WHERE expires_at < now()
+        AND kind <> 'production'
         AND status NOT IN ('destroyed', 'destroying')`,
   );
   return rows.map(toRecord);
@@ -227,6 +236,17 @@ export async function setExpiry(
   const { rows } = await pool.query<Row>(
     `UPDATE environments SET expires_at = $2 WHERE id = $1 RETURNING *`,
     [id, expiresAt],
+  );
+  return rows[0] ? toRecord(rows[0]) : null;
+}
+
+/** The production environment for a repository, if one exists. */
+export async function getProduction(repo: string): Promise<EnvironmentRecord | null> {
+  const { rows } = await pool.query<Row>(
+    `SELECT * FROM environments
+      WHERE kind = 'production' AND repo = $1 AND status <> 'destroyed'
+      ORDER BY created_at DESC LIMIT 1`,
+    [repo],
   );
   return rows[0] ? toRecord(rows[0]) : null;
 }

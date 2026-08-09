@@ -81,7 +81,7 @@ export const config = {
     .filter(Boolean),
 
   /** Version reported by /api/health - used to confirm which build is live. */
-  version: '2.0.1',
+  version: '2.1.0',
 
   security: {
     /**

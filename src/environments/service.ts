@@ -17,7 +17,8 @@ import { enableSubdomain, serviceDelete, serviceImport } from '../zerops/cli.js'
 import { deployFromRepo } from '../zerops/deploy.js';
 import { buildEnvironment, sanitiseSlug, type EnvironmentSpec } from '../zerops/manifest.js';
 import * as store from './store.js';
-import type { EnvironmentRecord, EnvironmentSource } from './store.js';
+import type { EnvironmentKind, EnvironmentRecord, EnvironmentSource } from './store.js';
+import { resolveSecrets } from '../secrets/store.js';
 
 /** Emits `changed` whenever any environment's state moves. Drives the SSE feed. */
 export const events = new EventEmitter();
@@ -30,6 +31,13 @@ export interface CreateInput extends EnvironmentSpec {
   /** Exact commit to deploy. Preferred over a branch name, which can move. */
   commitSha?: string;
   source?: EnvironmentSource;
+  /** `production` environments are permanent and never reaped. */
+  kind?: EnvironmentKind;
+  /**
+   * False for a pull request opened from a fork. Untrusted code receives no
+   * secrets at all - see secrets/store.ts.
+   */
+  trusted?: boolean;
   prNumber?: number;
   prRepo?: string;
   title?: string;
@@ -97,9 +105,12 @@ export async function createEnvironment(
 ): Promise<EnvironmentRecord> {
   const slug = sanitiseSlug(input.slug);
 
-  const active = await store.countActive();
-  if (active >= config.limits.maxLiveEnvironments) {
-    throw new CapacityError(active, config.limits.maxLiveEnvironments);
+  // Production is exempt from the cap: it is the thing the cap exists to protect.
+  if (input.kind !== 'production') {
+    const active = await store.countActive();
+    if (active >= config.limits.maxLiveEnvironments) {
+      throw new CapacityError(active, config.limits.maxLiveEnvironments);
+    }
   }
 
   const existing = await store.getBySlug(slug);
@@ -107,8 +118,22 @@ export async function createEnvironment(
     throw new SlugInUseError(slug);
   }
 
+  // Secrets are resolved per deployment: production and preview can hold
+  // different values, and a fork gets none.
+  const repoFull = repoFullName(input.repo);
+  const secrets = await resolveSecrets(
+    repoFull,
+    input.kind === 'production' ? 'production' : 'preview',
+    input.trusted !== false,
+  );
+
   const resolved = buildEnvironment(
-    { ...input, slug },
+    {
+      ...input,
+      slug,
+      env: { ...secrets.run, ...(input.env ?? {}) },
+      buildEnv: { ...secrets.build, ...(input.buildEnv ?? {}) },
+    },
     config.zerops.projectCode,
     config.zerops.region,
   );
@@ -143,7 +168,7 @@ export async function createEnvironment(
 
   // Dispatch provisioning without blocking the caller.
   void provision(record, resolved, {
-    repo: repoFullName(input.repo),
+    repo: repoFull,
     ref: input.commitSha ?? input.branch ?? 'HEAD',
   });
 
@@ -179,6 +204,7 @@ async function insertRecord(
     prNumber: input.prNumber ?? null,
     prRepo: input.prRepo ?? null,
     title: input.title ?? null,
+    kind: input.kind ?? 'preview',
     expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
   });
 }

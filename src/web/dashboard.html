@@ -152,6 +152,23 @@
     background: var(--good-bg); color: var(--good); border: 1px solid var(--good-line);
   }
   .badge.low { background: var(--warn-bg); color: var(--warn); border-color: var(--warn-line); }
+  .badge.prod { background: #eef2fb; color: var(--link); border-color: #d3e0f5; }
+
+  .card.production { border-color: #d3e0f5; box-shadow: 0 1px 2px rgba(37,106,191,.10); }
+  .card.production .slug::before { content: '◆ '; color: var(--link); }
+
+  .repo-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+  .secrets { margin-top: 12px; padding: 14px 16px; background: var(--bg);
+             border: 1px solid var(--line); border-radius: 12px; }
+  .secret-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px;
+                border-bottom: 1px solid var(--line); font-size: 13px; }
+  .secret-row:last-of-type { border-bottom: 0; }
+  .secret-row .k { font-family: var(--mono); font-weight: 600; }
+  .secret-row .v { font-family: var(--mono); color: var(--ink-3); }
+  .secret-row .tag { font-size: 11px; color: var(--ink-2); border: 1px solid var(--line);
+                     padding: 2px 7px; border-radius: 980px; background: var(--card); }
+  .note { font-size: 12.5px; color: var(--ink-2); margin: 10px 0 0; line-height: 1.5; }
+  .note strong { color: var(--ink); }
 
   input[type=text], input[type=number], select, textarea {
     background: var(--card);
@@ -324,9 +341,10 @@
 </header>
 
 <p class="how">
-  <b>Connect a repository</b><span class="sep">→</span>every pull request gets a live app
-  with <b>its own PostgreSQL</b> in about ninety seconds<span class="sep">→</span>closing
-  the pull request destroys it. Agents get the same power over MCP.
+  <b>Connect a repository</b><span class="sep">→</span>its default branch becomes
+  <b>production</b>, and every pull request gets its own live app with
+  <b>its own PostgreSQL</b><span class="sep">→</span>review it, then
+  <b>approve or reject right here</b> — merging redeploys production automatically.
 </p>
 
 <section class="stats">
@@ -504,7 +522,7 @@ async function seed() {
 
 function card(env) {
   const el = document.createElement('div');
-  el.className = 'card';
+  el.className = 'card' + (env.kind === 'production' ? ' production' : '');
   el.id = 'env-' + env.id;
 
   const ready = env.status === 'ready';
@@ -514,6 +532,7 @@ function card(env) {
   el.innerHTML = `
     <div class="card-top">
       <span class="slug">${escapeHtml(env.slug)}</span>
+      ${env.kind === 'production' ? '<span class="badge prod">production</span>' : ''}
       <span class="pill ${env.status}">${env.status}</span>
     </div>
     ${env.title ? `<p class="title">${escapeHtml(env.title)}</p>` : ''}
@@ -535,10 +554,47 @@ function card(env) {
     </div>
     ${gone ? '' : `
     <div class="card-actions">
-      <button class="quiet" data-extend="${env.id}">Extend +2h</button>
+      ${env.pullRequest && ready ? `<button data-approve="${env.id}">✓ Approve &amp; merge</button>` : ''}
+      ${env.pullRequest ? `<button class="quiet danger" data-reject="${env.id}">Reject</button>` : ''}
+      ${env.kind === 'production' ? '' : `<button class="quiet" data-extend="${env.id}">Extend +2h</button>`}
       <button class="quiet danger" data-destroy="${env.id}">Destroy</button>
     </div>`}
   `;
+
+  el.querySelector('[data-approve]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = 'Merging…';
+    const response = await authed('/api/environments/' + env.id + '/review', {
+      method: 'POST', body: JSON.stringify({ decision: 'approve' }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) notify('Merged. Production is redeploying from the default branch.');
+    else {
+      notify(body.error || 'Merge failed.', true);
+      button.disabled = false; button.textContent = '✓ Approve & merge';
+    }
+  });
+
+  el.querySelector('[data-reject]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1'; button.textContent = 'Confirm reject';
+      setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Reject'; }, 3500);
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'Rejecting…';
+    const response = await authed('/api/environments/' + env.id + '/review', {
+      method: 'POST', body: JSON.stringify({ decision: 'reject' }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) notify('Pull request closed and preview destroyed.');
+    else {
+      notify(body.error || 'Reject failed.', true);
+      button.disabled = false; button.textContent = 'Reject';
+    }
+  });
 
   el.querySelector('[data-extend]')?.addEventListener('click', async (event) => {
     const button = event.currentTarget;
@@ -651,8 +707,29 @@ async function loadRepos() {
         <span class="name">${escapeHtml(repo.fullName)}</span>
         ${repo.buildPlan ? `<span class="chip">${escapeHtml(repo.buildPlan.framework)}</span>` : ''}
         <span class="when">connected ${new Date(repo.connectedAt).toLocaleDateString()}</span>
-        <button class="quiet danger">Disconnect</button>`;
-      row.querySelector('button').addEventListener('click', async (event) => {
+        <span class="repo-actions">
+          <button class="quiet" data-secrets>Secrets${repo.secretCount ? ' (' + repo.secretCount + ')' : ''}</button>
+          <button class="quiet" data-deploy>Deploy production</button>
+          <button class="quiet danger" data-disconnect>Disconnect</button>
+        </span>`;
+
+      row.querySelector('[data-secrets]').addEventListener('click', () => {
+        toggleSecrets(repo.fullName, row);
+      });
+
+      row.querySelector('[data-deploy]').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        button.textContent = 'Deploying…';
+        const response = await authed('/api/repos/' + repo.fullName + '/production', { method: 'POST' });
+        const body = await response.json().catch(() => ({}));
+        button.disabled = false;
+        button.textContent = 'Deploy production';
+        if (response.ok) notify('Production deploying for ' + repo.fullName + ' → ' + body.url);
+        else if (response.status !== 401) notify(body.error || 'Deploy failed.', true);
+      });
+
+      row.querySelector('[data-disconnect]').addEventListener('click', async (event) => {
         const button = event.currentTarget;
         if (button.dataset.armed !== '1') {
           button.dataset.armed = '1'; button.textContent = 'Confirm';
@@ -689,6 +766,88 @@ function showPlan(repo, plan, docker) {
   document.getElementById('dStart').value = plan.startCommand;
   document.getElementById('detectError').textContent = '';
   box.style.display = 'block';
+}
+
+/* ---------- secrets: write-only, masked, scoped ---------- */
+async function toggleSecrets(fullName, row) {
+  const existing = row.nextElementSibling;
+  if (existing && existing.classList.contains('secrets')) { existing.remove(); return; }
+
+  const panel = document.createElement('div');
+  panel.className = 'secrets';
+  panel.innerHTML = '<span class="hint">Loading…</span>';
+  row.after(panel);
+
+  const response = await authed('/api/repos/' + fullName + '/secrets');
+  if (!response.ok) { panel.innerHTML = '<span class="hint">Unavailable.</span>'; return; }
+  const { secrets } = await response.json();
+
+  panel.innerHTML = `
+    ${secrets.length
+      ? secrets.map((s) => `
+        <div class="secret-row">
+          <span class="k">${escapeHtml(s.key)}</span>
+          <span class="v">${escapeHtml(s.preview)}</span>
+          <span class="tag">${escapeHtml(s.scope)}</span>
+          <span class="tag">${escapeHtml(s.phase)}</span>
+          <button class="quiet danger" data-del="${escapeHtml(s.key)}" style="margin-left:auto">Remove</button>
+        </div>`).join('')
+      : '<span class="hint">No secrets yet. Anything you add is injected into every future deployment.</span>'}
+    <div class="form-grid" style="margin-top:12px">
+      <label>Name <input type="text" data-k placeholder="STRIPE_SECRET_KEY" /></label>
+      <label>Value <input type="text" data-v placeholder="sk_live_…" autocomplete="off" /></label>
+      <label>Applies to
+        <select data-scope>
+          <option value="all">Production &amp; previews</option>
+          <option value="production">Production only</option>
+          <option value="preview">Previews only</option>
+        </select>
+      </label>
+      <label>Needed at
+        <select data-phase>
+          <option value="runtime">Runtime</option>
+          <option value="build">Build</option>
+          <option value="both">Both</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-actions"><button type="button" data-add>Add secret</button>
+      <span class="form-error" data-err></span></div>
+    <p class="note"><strong>Stored encrypted and write-only</strong> — values can be replaced or removed
+      but never read back. <strong>Pull requests from forks receive no secrets at all</strong>, because
+      fork code is untrusted and could simply print them.</p>`;
+
+  panel.querySelectorAll('[data-del]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      const key = button.getAttribute('data-del');
+      const r = await authed('/api/repos/' + fullName + '/secrets/' + encodeURIComponent(key), { method: 'DELETE' });
+      if (r.ok) { notify(key + ' removed.'); panel.remove(); toggleSecrets(fullName, row); loadRepos(); }
+      else { button.disabled = false; notify('Could not remove ' + key, true); }
+    });
+  });
+
+  panel.querySelector('[data-add]').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const errorEl = panel.querySelector('[data-err]');
+    errorEl.textContent = '';
+    const key = panel.querySelector('[data-k]').value.trim();
+    const value = panel.querySelector('[data-v]').value;
+    if (!key || !value) { errorEl.textContent = 'Both a name and a value are required.'; return; }
+    button.disabled = true;
+    const r = await authed('/api/repos/' + fullName + '/secrets', {
+      method: 'PUT',
+      body: JSON.stringify({
+        key, value,
+        scope: panel.querySelector('[data-scope]').value,
+        phase: panel.querySelector('[data-phase]').value,
+      }),
+    });
+    const body = await r.json().catch(() => ({}));
+    button.disabled = false;
+    if (r.ok) { notify(key + ' saved.'); panel.remove(); toggleSecrets(fullName, row); loadRepos(); }
+    else if (r.status !== 401) errorEl.textContent = body.error || 'Could not save.';
+  });
 }
 
 document.getElementById('repoForm').addEventListener('submit', async (event) => {

@@ -66,6 +66,14 @@ export interface EnvironmentSpec {
   startCommand?: string;
   /** Additional environment variables injected into the running app. */
   env?: Record<string, string>;
+  /** Variables needed while building (e.g. NEXT_PUBLIC_*). */
+  buildEnv?: Record<string, string>;
+  /**
+   * Commands run after deploy and before start - database migrations and
+   * seeding. Without these a preview has an empty schema and dies on its
+   * first query.
+   */
+  initCommands?: string[];
 }
 
 export interface ResolvedEnvironment {
@@ -187,6 +195,9 @@ export function buildEnvironment(
       ? {}
       : { buildCommands: spec.buildCommands ?? ['npm install'] }),
     deployFiles: spec.deployFiles ?? ['./'],
+    ...(spec.buildEnv && Object.keys(spec.buildEnv).length
+      ? { envVariables: spec.buildEnv }
+      : {}),
   };
 
   const run: Record<string, unknown> = isStatic
@@ -207,6 +218,7 @@ export function buildEnvironment(
           ...dbEnv,
           ...(spec.env ?? {}),
         },
+        ...(spec.initCommands?.length ? { initCommands: spec.initCommands } : {}),
         start: spec.startCommand ?? 'npm start',
       };
 

@@ -24,6 +24,8 @@ export interface ConnectedRepo {
   connectedAt: string;
   /** The confirmed build plan; pull requests use this instead of a repo file. */
   buildPlan: BuildPlan | null;
+  /** How many secrets are stored, so the UI can show it without exposing them. */
+  secretCount?: number;
 }
 
 interface RepoRow {
@@ -96,10 +98,11 @@ function assertConfigured(): void {
 }
 
 export async function listRepos(): Promise<ConnectedRepo[]> {
-  const { rows } = await pool.query<RepoRow>(
-    `SELECT * FROM repos ORDER BY connected_at DESC`,
+  const { rows } = await pool.query<RepoRow & { secret_count: string }>(
+    `SELECT r.*, (SELECT count(*) FROM repo_secrets s WHERE s.repo = r.full_name) AS secret_count
+       FROM repos r ORDER BY r.connected_at DESC`,
   );
-  return rows.map(toRepo);
+  return rows.map((row) => ({ ...toRepo(row), secretCount: Number(row.secret_count ?? 0) }));
 }
 
 export async function connectRepo(

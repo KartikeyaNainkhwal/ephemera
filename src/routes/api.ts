@@ -39,6 +39,7 @@ export function serialise(record: EnvironmentRecord) {
     repo: record.repo,
     branch: record.branch,
     source: record.source,
+    kind: record.kind,
     title: record.title,
     pullRequest:
       record.prRepo && record.prNumber

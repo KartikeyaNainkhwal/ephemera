@@ -19,6 +19,7 @@ import {
 } from '../environments/service.js';
 import * as store from '../environments/store.js';
 import { getRepoPlan } from '../github/repos.js';
+import { deployProduction } from '../environments/production.js';
 import { inspectRepo } from '../github/inspect.js';
 import { sanitiseSlug } from '../zerops/manifest.js';
 
@@ -28,7 +29,13 @@ interface PullRequestEvent {
   pull_request?: {
     number: number;
     title?: string;
-    head?: { ref?: string; sha?: string };
+    merged?: boolean;
+    head?: {
+      ref?: string;
+      sha?: string;
+      repo?: { full_name?: string; fork?: boolean };
+    };
+    base?: { ref?: string };
   };
   repository?: {
     full_name?: string;
@@ -199,7 +206,20 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
             (spent ? `\n\nTotal cost of this preview: **${spent}**.` : ''),
         );
       }
-      return { ok: true, action: 'destroyed' };
+      // A merged pull request means the default branch moved: ship it.
+      if (pr.merged) {
+        void deployProduction(fullName).catch((error) =>
+          console.error('[ephemera] production redeploy failed:', error),
+        );
+        await comment(
+          fullName,
+          number,
+          `**Ephemera** — merged. Redeploying production from ` +
+            `\`${pr.base?.ref ?? 'the default branch'}\`.`,
+        );
+      }
+
+      return { ok: true, action: 'destroyed', merged: Boolean(pr.merged) };
     }
 
     if (!['opened', 'reopened', 'synchronize'].includes(action)) {
@@ -215,6 +235,12 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
 
     const branch = pr.head?.ref ?? 'main';
     const commitSha = pr.head?.sha;
+
+    // A pull request from a fork runs code nobody has reviewed. Injecting real
+    // secrets there is the "preview deployment secret leakage" attack - the PR
+    // simply prints them. Forks get an environment, but no secrets at all.
+    const headRepo = pr.head?.repo?.full_name;
+    const trusted = pr.head?.repo?.fork !== true && (!headRepo || headRepo === fullName);
 
     // Configuration comes from the plan confirmed when the repository was
     // connected - the repository itself needs no Ephemera files. An explicit
@@ -252,12 +278,18 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
         // Pin to the exact commit: a branch ref can move (and GitHub's raw
         // CDN can serve a stale copy) between the webhook and the download.
         commitSha,
+        trusted,
         ...repoConfig,
       });
 
       // The URL is known before the environment exists, so the reviewer gets a
       // clickable link immediately rather than after a poll completes.
       const stack = plan ? `Detected as **${plan.framework}**. ` : '';
+      const forkNote = trusted
+        ? ''
+        : `\n\n> This pull request comes from a fork, so **no secrets were ` +
+          `injected**. Anything requiring an API key will not work here — that ` +
+          `is deliberate: fork code is untrusted.`;
       const infra = environment.dbHostname
         ? 'A dedicated application container and its own PostgreSQL database are'
         : 'A dedicated application container is';
@@ -268,7 +300,7 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
           `**${environment.url}**\n\n` +
           `${stack}${infra} being created for this pull request. The link works ` +
           `as soon as the app answers — typically under two minutes.\n\n` +
-          `It is destroyed automatically when this pull request closes.`,
+          `It is destroyed automatically when this pull request closes.` + forkNote,
       );
 
       return reply.code(202).send({ ok: true, environment: environment.slug });

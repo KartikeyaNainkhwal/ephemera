@@ -96,6 +96,27 @@ export async function initialiseSchema(): Promise<void> {
   // The confirmed build plan for each repository, so a pull request needs no
   // configuration file of its own. Added separately for existing deployments.
   await pool.query(`ALTER TABLE repos ADD COLUMN IF NOT EXISTS build_plan JSONB;`);
+
+  // Per-repository secrets, encrypted at rest. Scope decides whether a value
+  // reaches production, previews, or both; phase decides build vs runtime.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS repo_secrets (
+      repo       TEXT NOT NULL,
+      key        TEXT NOT NULL,
+      value_enc  TEXT NOT NULL,
+      scope      TEXT NOT NULL DEFAULT 'all',
+      phase      TEXT NOT NULL DEFAULT 'runtime',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (repo, key)
+    );
+  `);
+
+  // Production environments are permanent and tied to a branch, so they need
+  // to be distinguishable from previews and exempt from TTL reaping.
+  await pool.query(`ALTER TABLE environments ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'preview';`);
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS environments_kind_idx ON environments (kind);`,
+  );
 }
 
 export async function closePool(): Promise<void> {
