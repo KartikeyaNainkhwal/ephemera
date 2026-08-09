@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { analyseSql, isMigrationPath, splitStatements } from './analyse.js';
+import { analyseSql, isMigrationPath, normaliseStatement, splitStatements } from './analyse.js';
 
 const rulesOf = (sql: string) => analyseSql(sql).findings.map((f) => f.rule);
 
@@ -214,4 +214,17 @@ test('a genuine column addition is still detected, with or without COLUMN', () =
   assert.ok(
     rulesOf('ALTER TABLE users ADD COLUMN IF NOT EXISTS nickname text;').includes('add-column-safe'),
   );
+});
+
+test('a statement keeps its comments but matches on the stripped form', () => {
+  // The runner matches on this form; anchored patterns fail against a raw
+  // statement whose first line is a comment.
+  const sql = '-- add the owner\nALTER TABLE tasks ADD COLUMN owner text;';
+  const [statement] = splitStatements(sql);
+  assert.ok(statement!.startsWith('--'), 'raw statement keeps its comment');
+  assert.ok(
+    normaliseStatement(statement!).startsWith('ALTER TABLE'),
+    'normalised form is matchable',
+  );
+  assert.ok(rulesOf(sql).includes('add-column-safe'));
 });

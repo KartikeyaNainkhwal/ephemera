@@ -174,10 +174,18 @@ function stripComments(statement: string): string {
     .trim();
 }
 
-/** Normalised form used for matching: comments removed, whitespace collapsed. */
-function normalise(statement: string): string {
+/**
+ * Normalised form used for matching: comments removed, whitespace collapsed.
+ *
+ * Exported because the runner must match on exactly the same text - matching a
+ * raw statement whose first line is a comment silently fails every anchored
+ * pattern, which cost us both row counts and lock inspection.
+ */
+export function normaliseStatement(statement: string): string {
   return stripComments(statement);
 }
+
+const normalise = normaliseStatement;
 
 interface Rule {
   rule: string;

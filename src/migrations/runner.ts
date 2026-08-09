@@ -18,7 +18,7 @@
 import pg from 'pg';
 
 import { config } from '../config.js';
-import { splitStatements } from './analyse.js';
+import { normaliseStatement, splitStatements } from './analyse.js';
 
 const { Client } = pg;
 
@@ -168,7 +168,10 @@ export async function runMigration(
     // report it rather than hang the analysis.
     await client.query(`SET LOCAL lock_timeout = '${options.lockTimeoutMs ?? 5_000}ms'`);
 
-    for (const [index, statement] of statements.entries()) {
+    for (const [index, raw] of statements.entries()) {
+      // Match on the comment-free form; execute the original, which PostgreSQL
+      // is perfectly happy to run comments and all.
+      const statement = normaliseStatement(raw);
       const relation = relationOf(statement);
       let rows: number | undefined;
 
@@ -198,7 +201,7 @@ export async function runMigration(
 
       const begin = Date.now();
       try {
-        await client.query(statement);
+        await client.query(raw);
         const durationMs = Date.now() - begin;
 
         // Read back the heaviest lock this transaction now holds on the relation.
