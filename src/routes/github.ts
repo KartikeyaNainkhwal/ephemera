@@ -12,7 +12,11 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 
 import { config } from '../config.js';
 import { accruedCost, formatCost } from '../environments/cost.js';
-import { createEnvironment, destroyEnvironment } from '../environments/service.js';
+import {
+  CapacityError,
+  createEnvironment,
+  destroyEnvironment,
+} from '../environments/service.js';
 import * as store from '../environments/store.js';
 import { sanitiseSlug } from '../zerops/manifest.js';
 
@@ -102,6 +106,24 @@ async function comment(fullName: string, issueNumber: number, body: string): Pro
   }
 }
 
+/**
+ * Webhook idempotency. GitHub retries deliveries, and a retried `opened`
+ * event must not provision a second environment. In-memory is the right scope
+ * for a single-instance control plane; entries expire after an hour.
+ */
+const seenDeliveries = new Map<string, number>();
+
+function isDuplicateDelivery(id: string | string[] | undefined): boolean {
+  if (typeof id !== 'string' || id === '') return false;
+  const now = Date.now();
+  for (const [key, at] of seenDeliveries) {
+    if (now - at > 3_600_000) seenDeliveries.delete(key);
+  }
+  if (seenDeliveries.has(id)) return true;
+  seenDeliveries.set(id, now);
+  return false;
+}
+
 /** Build a stable, legal slug from a repository and pull request number. */
 function slugForPullRequest(fullName: string, number: number): string {
   const repoPart = fullName.split('/').pop() ?? 'repo';
@@ -134,6 +156,10 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
     const event = request.headers['x-github-event'];
     if (event === 'ping') return { ok: true, pong: true };
     if (event !== 'pull_request') return { ok: true, ignored: event };
+
+    if (isDuplicateDelivery(request.headers['x-github-delivery'])) {
+      return { ok: true, duplicate: true };
+    }
 
     const payload = request.body as PullRequestEvent;
     const action = payload.action ?? '';
@@ -213,6 +239,16 @@ export async function registerGithubRoutes(app: FastifyInstance): Promise<void> 
 
       return reply.code(202).send({ ok: true, environment: environment.slug });
     } catch (error) {
+      if (error instanceof CapacityError) {
+        await comment(
+          fullName,
+          number,
+          `**Ephemera** — at capacity.\n\n${error.message}\n\n` +
+            `Push to this pull request again once capacity is free and a preview ` +
+            `will be provisioned.`,
+        );
+        return reply.code(200).send({ ok: false, reason: 'capacity' });
+      }
       const message = error instanceof Error ? error.message : String(error);
       app.log.error({ error: message }, 'failed to create environment for PR');
       return reply.code(500).send({ error: message });

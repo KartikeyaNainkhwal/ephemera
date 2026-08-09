@@ -82,6 +82,16 @@ export async function initialiseSchema(): Promise<void> {
   await pool.query(
     `CREATE INDEX IF NOT EXISTS environments_pr_idx ON environments (pr_repo, pr_number);`,
   );
+
+  // Repositories connected through the dashboard/API. One row per repository;
+  // the webhook id lets disconnection remove exactly the hook we created.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS repos (
+      full_name    TEXT PRIMARY KEY,
+      webhook_id   BIGINT NOT NULL,
+      connected_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
 }
 
 export async function closePool(): Promise<void> {

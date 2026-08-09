@@ -18,7 +18,10 @@
  *       "ephemera": {
  *         "command": "node",
  *         "args": ["/path/to/ephemera/dist/mcp/server.js"],
- *         "env": { "EPHEMERA_URL": "https://<your-control-plane>" }
+ *         "env": {
+ *           "EPHEMERA_URL": "https://<your-control-plane>",
+ *           "EPHEMERA_API_KEY": "<admin key - required for create/destroy>"
+ *         }
  *       }
  *     }
  *   }
@@ -29,6 +32,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 const BASE_URL = (process.env.EPHEMERA_URL ?? 'http://localhost:3000').replace(/\/$/, '');
+const API_KEY = process.env.EPHEMERA_API_KEY?.trim() ?? '';
 
 interface EnvironmentPayload {
   id: string;
@@ -45,7 +49,11 @@ interface EnvironmentPayload {
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'content-type': 'application/json',
+      ...(API_KEY ? { authorization: `Bearer ${API_KEY}` } : {}),
+      ...(init?.headers ?? {}),
+    },
     signal: AbortSignal.timeout(60_000),
   });
   const text = await response.text();

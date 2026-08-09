@@ -38,6 +38,13 @@ services:
       EPHEMERA_REGION: prg1
       DEFAULT_TTL_MINUTES: "120"
 
+      # Admin key protecting every mutating endpoint. Generate one with:
+      #   openssl rand -hex 24
+      EPHEMERA_API_KEY: <generate-a-long-random-string>
+
+      # Hard cap on concurrently existing environments (default 10).
+      # MAX_LIVE_ENVIRONMENTS: "10"
+
       # The reaper will never destroy these, which keeps the control plane
       # from tearing itself down.
       PROTECTED_HOSTNAMES: ephemera,ephemeradb

@@ -198,3 +198,35 @@ export async function listExpired(): Promise<EnvironmentRecord[]> {
   );
   return rows.map(toRecord);
 }
+
+/**
+ * How many environments currently occupy capacity. Anything not destroyed
+ * counts - a failed environment may still have real services standing.
+ */
+export async function countActive(): Promise<number> {
+  const { rows } = await pool.query<{ n: string }>(
+    `SELECT count(*) AS n FROM environments WHERE status <> 'destroyed'`,
+  );
+  return Number(rows[0]?.n ?? 0);
+}
+
+/** Environments whose lifecycle was interrupted by a control-plane restart. */
+export async function listInFlight(): Promise<EnvironmentRecord[]> {
+  const { rows } = await pool.query<Row>(
+    `SELECT * FROM environments
+      WHERE status IN ('creating', 'building', 'destroying')`,
+  );
+  return rows.map(toRecord);
+}
+
+/** Move an environment's expiry, returning the updated record. */
+export async function setExpiry(
+  id: string,
+  expiresAt: Date,
+): Promise<EnvironmentRecord | null> {
+  const { rows } = await pool.query<Row>(
+    `UPDATE environments SET expires_at = $2 WHERE id = $1 RETURNING *`,
+    [id, expiresAt],
+  );
+  return rows[0] ? toRecord(rows[0]) : null;
+}

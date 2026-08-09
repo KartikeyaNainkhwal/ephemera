@@ -40,6 +40,48 @@ export class SlugInUseError extends Error {
   }
 }
 
+export class CapacityError extends Error {
+  constructor(active: number, max: number) {
+    super(
+      `Environment limit reached (${active}/${max} live). Destroy an environment, ` +
+        `wait for one to expire, or raise MAX_LIVE_ENVIRONMENTS on the control plane.`,
+    );
+    this.name = 'CapacityError';
+  }
+}
+
+/**
+ * Map known failure signatures to something a user can act on. The raw detail
+ * is preserved after a separator so nothing is hidden - the friendly line
+ * leads, the evidence follows.
+ */
+const FRIENDLY_ERRORS: Array<[RegExp, string]> = [
+  [
+    /Timed out waiting/i,
+    'The application never answered at its public URL. Check the start command, ' +
+      'the listening port, and the build log in the Zerops dashboard.',
+  ],
+  [
+    /ZEROPS_' prefix|userDataZeropsPrefixForbidden/i,
+    'Environment variable names starting with ZEROPS_ are reserved by the platform. ' +
+      'Rename the variable and retry.',
+  ],
+  [
+    /not valid yaml|projectImportInvalidYaml/i,
+    'Zerops rejected the generated service definition. This is likely an Ephemera ' +
+      'bug - please open an issue including the request you sent.',
+  ],
+  [
+    /serviceStackNameUnavailable|already exists/i,
+    'A service with this name already exists in the project. Choose a different slug.',
+  ],
+];
+
+function withFriendlyHint(message: string): string {
+  const hint = FRIENDLY_ERRORS.find(([pattern]) => pattern.test(message))?.[1];
+  return hint ? `${hint}\n---\n${message}` : message;
+}
+
 /**
  * Provision a new isolated environment.
  *
@@ -52,6 +94,11 @@ export async function createEnvironment(
 ): Promise<EnvironmentRecord> {
   const slug = sanitiseSlug(input.slug);
 
+  const active = await store.countActive();
+  if (active >= config.limits.maxLiveEnvironments) {
+    throw new CapacityError(active, config.limits.maxLiveEnvironments);
+  }
+
   const existing = await store.getBySlug(slug);
   if (existing && existing.status !== 'destroyed') {
     throw new SlugInUseError(slug);
@@ -63,8 +110,47 @@ export async function createEnvironment(
     config.zerops.region,
   );
 
+  // A slug free in our records can still collide with a service created
+  // outside Ephemera. Check the live project before importing; a transient
+  // read failure must not block creation - the import fails loudly anyway.
+  try {
+    const names = new Set((await listServices()).map((service) => service.name));
+    if (
+      names.has(resolved.appHostname) ||
+      (resolved.dbHostname !== null && names.has(resolved.dbHostname))
+    ) {
+      throw new SlugInUseError(slug);
+    }
+  } catch (error) {
+    if (error instanceof SlugInUseError) throw error;
+  }
+
   const ttlMinutes = input.ttlMinutes ?? config.defaultTtlMinutes;
-  const record = await store.insert({
+  let record: EnvironmentRecord;
+  try {
+    record = await insertRecord(input, resolved, slug, ttlMinutes);
+  } catch (error) {
+    // The partial unique index on live slugs is the concurrency backstop for
+    // two simultaneous creates racing past the pre-check above.
+    if ((error as { code?: string }).code === '23505') throw new SlugInUseError(slug);
+    throw error;
+  }
+
+  announce(record);
+
+  // Dispatch provisioning without blocking the caller.
+  void provision(record, resolved.importYaml);
+
+  return record;
+}
+
+async function insertRecord(
+  input: CreateInput,
+  resolved: ReturnType<typeof buildEnvironment>,
+  slug: string,
+  ttlMinutes: number,
+): Promise<EnvironmentRecord> {
+  return store.insert({
     id: randomUUID(),
     slug: resolved.slug,
     appHostname: resolved.appHostname,
@@ -78,13 +164,6 @@ export async function createEnvironment(
     title: input.title ?? null,
     expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
   });
-
-  announce(record);
-
-  // Dispatch provisioning without blocking the caller.
-  void provision(record, resolved.importYaml);
-
-  return record;
 }
 
 async function provision(
@@ -113,7 +192,7 @@ async function provision(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[ephemera] provisioning failed for ${record.slug}:`, message);
-    announce(await store.setStatus(record.id, 'failed', message));
+    announce(await store.setStatus(record.id, 'failed', withFriendlyHint(message)));
   }
 }
 
@@ -164,7 +243,9 @@ async function waitUntilServing(
     await store.setStatus(
       record.id,
       'failed',
-      'Timed out waiting for the application to serve traffic.',
+      'The application never answered at its public URL within the provisioning ' +
+        'window. Check the start command, the listening port, and the build log ' +
+        'in the Zerops dashboard.',
     ),
   );
 }
@@ -213,6 +294,46 @@ export async function destroyEnvironment(id: string): Promise<EnvironmentRecord 
 
   announce(finalRecord);
   return finalRecord;
+}
+
+/**
+ * Push an environment's expiry into the future ("keep alive").
+ */
+export async function extendEnvironment(
+  id: string,
+  ttlMinutes: number,
+): Promise<EnvironmentRecord | null> {
+  const record = await store.getById(id);
+  if (!record) return null;
+  if (record.status === 'destroyed' || record.status === 'destroying') {
+    throw new Error('This environment is already being destroyed and cannot be extended.');
+  }
+  const updated = await store.setExpiry(id, new Date(Date.now() + ttlMinutes * 60_000));
+  announce(updated);
+  return updated;
+}
+
+/**
+ * Re-attach lifecycle watchers after a control-plane restart.
+ *
+ * Provisioning dispatches work to Zerops and then watches from the outside,
+ * so a restart loses only the watcher - not the work. Without this, an
+ * environment interrupted mid-provision would sit in `creating` forever and
+ * one interrupted mid-teardown would keep billing.
+ */
+export async function resumeInFlight(): Promise<number> {
+  const inFlight = await store.listInFlight();
+  for (const record of inFlight) {
+    if (record.status === 'destroying') {
+      console.log(`[ephemera] resuming teardown of ${record.slug} after restart`);
+      void destroyEnvironment(record.id);
+    } else {
+      console.log(`[ephemera] resuming readiness watch for ${record.slug} after restart`);
+      void store.setStatus(record.id, 'building').then((updated) => announce(updated));
+      void waitUntilServing(record);
+    }
+  }
+  return inFlight.length;
 }
 
 /**

@@ -79,6 +79,43 @@ export const config = {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+
+  /** Version reported by /api/health - used to confirm which build is live. */
+  version: '1.1.0',
+
+  security: {
+    /**
+     * Admin key protecting every mutating endpoint. When unset the API runs
+     * open - acceptable for local development only, and warned about at boot.
+     */
+    apiKey: process.env.EPHEMERA_API_KEY?.trim() ?? '',
+
+    /** Read endpoints are public by default; set EPHEMERA_PUBLIC_READS=false to lock them. */
+    publicReads: optional('EPHEMERA_PUBLIC_READS', 'true') !== 'false',
+  },
+
+  /**
+   * This deployment's own public URL, used when creating repository webhooks.
+   * Zerops injects `zeropsSubdomain` into the container, so this usually needs
+   * no configuration at all.
+   */
+  publicUrl: (
+    process.env.EPHEMERA_PUBLIC_URL?.trim() ||
+    process.env.zeropsSubdomain?.trim() ||
+    ''
+  ).replace(/\/+$/, ''),
+
+  limits: {
+    /**
+     * Hard cap on concurrently existing environments. Each environment is two
+     * billed services, so an unbounded create API is an unbounded bill.
+     */
+    maxLiveEnvironments: Number(optional('MAX_LIVE_ENVIRONMENTS', '10')),
+
+    /** Mutations allowed per IP per window. */
+    mutationsPerWindow: Number(optional('RATE_LIMIT_MUTATIONS', '60')),
+    rateWindowMs: 10 * 60_000,
+  },
 } as const;
 
 export type Config = typeof config;

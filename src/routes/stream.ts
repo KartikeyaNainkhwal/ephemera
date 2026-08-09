@@ -11,10 +11,12 @@ import type { FastifyInstance } from 'fastify';
 import { events } from '../environments/service.js';
 import * as store from '../environments/store.js';
 import type { EnvironmentRecord } from '../environments/store.js';
+import { requireRead } from '../security.js';
 import { serialise } from './api.js';
 
 export async function registerStreamRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/stream', (request, reply) => {
+    if (!requireRead(request, reply)) return;
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',

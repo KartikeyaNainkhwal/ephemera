@@ -3,18 +3,31 @@
  *
  * This is the surface the dashboard, the GitHub integration and the MCP server
  * all speak to, so the lifecycle has exactly one implementation.
+ *
+ * Auth model: mutations require the admin key; reads are public by default
+ * (EPHEMERA_PUBLIC_READS=false locks them down). The GitHub webhook has its
+ * own HMAC-based authentication in routes/github.ts.
  */
 
 import type { FastifyInstance } from 'fastify';
 
+import { config } from '../config.js';
 import { accruedCost, hourlyCost } from '../environments/cost.js';
 import {
+  CapacityError,
   createEnvironment,
   destroyEnvironment,
+  extendEnvironment,
   SlugInUseError,
 } from '../environments/service.js';
 import * as store from '../environments/store.js';
 import type { EnvironmentRecord } from '../environments/store.js';
+import {
+  TTL_MAX_MINUTES,
+  TTL_MIN_MINUTES,
+  validateCreate,
+} from '../environments/validate.js';
+import { allowMutation, requireKey, requireRead } from '../security.js';
 
 export function serialise(record: EnvironmentRecord) {
   const withDatabase = record.dbHostname !== null;
@@ -51,25 +64,9 @@ export function serialise(record: EnvironmentRecord) {
   };
 }
 
-interface CreateBody {
-  slug?: string;
-  repo?: string;
-  branch?: string;
-  runtime?: string;
-  port?: number;
-  withDatabase?: boolean;
-  prepareCommands?: string[];
-  buildCommands?: string[];
-  deployFiles?: string[];
-  startCommand?: string;
-  env?: Record<string, string>;
-  ttlMinutes?: number;
-  title?: string;
-  source?: 'api' | 'agent';
-}
-
 export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/api/environments', async (request) => {
+  app.get('/api/environments', async (request, reply) => {
+    if (!requireRead(request, reply)) return;
     const includeDestroyed =
       (request.query as { all?: string } | undefined)?.all === 'true';
     const records = includeDestroyed
@@ -79,6 +76,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get('/api/environments/:id', async (request, reply) => {
+    if (!requireRead(request, reply)) return;
     const { id } = request.params as { id: string };
     const record = await store.getById(id);
     if (!record) return reply.code(404).send({ error: 'Environment not found.' });
@@ -86,37 +84,27 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.post('/api/environments', async (request, reply) => {
-    const body = (request.body ?? {}) as CreateBody;
+    if (!allowMutation(request.ip)) {
+      return reply.code(429).send({
+        error: `Too many requests - at most ${config.limits.mutationsPerWindow} mutations per 10 minutes.`,
+      });
+    }
+    if (!requireKey(request, reply)) return;
 
-    if (!body.repo) {
-      return reply
-        .code(400)
-        .send({ error: 'A "repo" (public git URL) is required.' });
+    const parsed = validateCreate(request.body);
+    if (!parsed.ok) {
+      return reply.code(400).send({ error: 'Invalid request.', details: parsed.errors });
     }
-    if (!body.slug) {
-      return reply.code(400).send({ error: 'A "slug" is required.' });
-    }
+
+    // `source` is metadata, not user configuration - whitelist it.
+    const source =
+      (request.body as { source?: unknown } | null)?.source === 'agent' ? 'agent' : 'api';
 
     try {
-      const record = await createEnvironment({
-        slug: body.slug,
-        repo: body.repo,
-        branch: body.branch,
-        runtime: body.runtime,
-        port: body.port,
-        withDatabase: body.withDatabase,
-        prepareCommands: body.prepareCommands,
-        buildCommands: body.buildCommands,
-        deployFiles: body.deployFiles,
-        startCommand: body.startCommand,
-        env: body.env,
-        ttlMinutes: body.ttlMinutes,
-        title: body.title,
-        source: body.source ?? 'api',
-      });
+      const record = await createEnvironment({ ...parsed.value, source });
       return reply.code(202).send(serialise(record));
     } catch (error) {
-      if (error instanceof SlugInUseError) {
+      if (error instanceof SlugInUseError || error instanceof CapacityError) {
         return reply.code(409).send({ error: error.message });
       }
       const message = error instanceof Error ? error.message : String(error);
@@ -124,7 +112,27 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
+  app.patch('/api/environments/:id', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const ttl = Number((request.body as { ttlMinutes?: unknown } | null)?.ttlMinutes);
+    if (!Number.isInteger(ttl) || ttl < TTL_MIN_MINUTES || ttl > TTL_MAX_MINUTES) {
+      return reply.code(400).send({
+        error: `"ttlMinutes" must be an integer between ${TTL_MIN_MINUTES} and ${TTL_MAX_MINUTES}.`,
+      });
+    }
+    try {
+      const record = await extendEnvironment(id, ttl);
+      if (!record) return reply.code(404).send({ error: 'Environment not found.' });
+      return serialise(record);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return reply.code(409).send({ error: message });
+    }
+  });
+
   app.delete('/api/environments/:id', async (request, reply) => {
+    if (!requireKey(request, reply)) return;
     const { id } = request.params as { id: string };
     const record = await destroyEnvironment(id);
     if (!record) return reply.code(404).send({ error: 'Environment not found.' });
@@ -133,6 +141,7 @@ export async function registerApiRoutes(app: FastifyInstance): Promise<void> {
 
   app.get('/api/health', async () => ({
     status: 'ok',
+    version: config.version,
     uptimeSeconds: Math.round(process.uptime()),
   }));
 }

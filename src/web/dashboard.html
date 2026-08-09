@@ -30,132 +30,153 @@
   }
   header {
     border-bottom: 1px solid var(--line);
-    padding: 22px 28px;
+    padding: 22px 28px 16px;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 18px;
     flex-wrap: wrap;
     background: linear-gradient(180deg, #101520, var(--bg));
   }
-  h1 {
-    margin: 0;
-    font-size: 19px;
-    letter-spacing: -0.01em;
-    font-weight: 650;
-  }
+  h1 { margin: 0; font-size: 19px; letter-spacing: -0.01em; font-weight: 650; }
   h1 span { color: var(--accent); }
   .tagline { color: var(--muted); font-size: 13.5px; margin: 3px 0 0; }
-  .live {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    color: var(--muted);
-    font-family: var(--mono);
-  }
-  .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted); transition: background .3s;
-  }
+  nav.links { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+  nav.links a { color: var(--muted); font-size: 13px; text-decoration: none; }
+  nav.links a:hover { color: var(--text); }
+  .live { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px;
+          color: var(--muted); font-family: var(--mono); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); transition: background .3s; }
   .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .how {
+    margin: 0; padding: 10px 28px; color: var(--muted); font-size: 13px;
+    border-bottom: 1px solid var(--line); background: var(--bg);
+  }
+  .how b { color: var(--text); font-weight: 600; }
 
   .stats {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1px;
-    background: var(--line);
-    border-bottom: 1px solid var(--line);
+    gap: 1px; background: var(--line); border-bottom: 1px solid var(--line);
   }
   .stat { background: var(--bg); padding: 16px 28px; }
   .stat .k { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; }
   .stat .v { font-size: 25px; font-family: var(--mono); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
-  main { padding: 24px 28px 60px; }
-  .empty {
-    border: 1px dashed var(--line);
-    border-radius: 12px;
-    padding: 48px 24px;
-    text-align: center;
-    color: var(--muted);
+  main { padding: 24px 28px 60px; display: flex; flex-direction: column; gap: 18px; }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px;
   }
-  .empty code {
-    display: block; margin-top: 14px; color: var(--accent);
-    font-family: var(--mono); font-size: 13px; white-space: pre-wrap;
+  .panel-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .panel-head b { font-size: 14.5px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+
+  .repo-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px;
+    background: var(--panel-2);
+  }
+  .repo-row .name { font-family: var(--mono); font-size: 13px; }
+  .repo-row .when { color: var(--muted); font-size: 12px; margin-left: auto; }
+
+  form.inline { display: flex; gap: 10px; flex-wrap: wrap; }
+  input[type=text], input[type=number], select, textarea {
+    background: #0f131b; border: 1px solid var(--line); color: var(--text);
+    padding: 9px 12px; border-radius: 8px; font-size: 14px; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  textarea { font-family: var(--mono); font-size: 12.5px; min-height: 54px; resize: vertical; }
+  button {
+    background: var(--accent); color: #04211c; border: 0; font-weight: 650;
+    padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 14px;
+  }
+  button.quiet {
+    background: transparent; color: var(--muted); border: 1px solid var(--line);
+    font-weight: 500; font-size: 12.5px; padding: 6px 11px; border-radius: 7px;
+  }
+  button.quiet:hover { color: var(--text); }
+  button.danger:hover { color: var(--red); border-color: #6d2525; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+  .form-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+  .form-wide { grid-column: 1 / -1; }
+  .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  .form-error { color: var(--red); font-size: 12.5px; white-space: pre-wrap; font-family: var(--mono); }
+
+  .empty {
+    border: 1px dashed var(--line); border-radius: 12px; padding: 40px 24px;
+    text-align: center; color: var(--muted);
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(370px, 1fr));
-    gap: 16px;
-  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(370px, 1fr)); gap: 16px; }
   .card {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 18px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px; display: flex; flex-direction: column; gap: 12px;
   }
   .card-top { display: flex; align-items: center; gap: 10px; }
   .slug { font-family: var(--mono); font-size: 14.5px; font-weight: 600; }
   .pill {
-    margin-left: auto;
-    font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
-    padding: 4px 9px; border-radius: 999px; font-weight: 600;
-    border: 1px solid transparent;
+    margin-left: auto; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+    padding: 4px 9px; border-radius: 999px; font-weight: 600; border: 1px solid transparent;
   }
-  .pill.creating, .pill.building {
-    color: var(--amber); background: #3b2f0b; border-color: #63500f;
-  }
+  .pill.creating, .pill.building { color: var(--amber); background: #3b2f0b; border-color: #63500f; }
   .pill.ready { color: var(--accent); background: var(--accent-dim); border-color: #1c6f68; }
   .pill.failed { color: var(--red); background: #3f1717; border-color: #6d2525; }
-  .pill.destroying, .pill.destroyed {
-    color: var(--muted); background: var(--panel-2); border-color: var(--line);
-  }
+  .pill.destroying, .pill.destroyed { color: var(--muted); background: var(--panel-2); border-color: var(--line); }
 
   .title { color: var(--muted); font-size: 13px; margin: -4px 0 0; }
-  .url {
-    font-family: var(--mono); font-size: 12.5px;
-    color: var(--blue); text-decoration: none;
-    word-break: break-all;
-  }
+  .url { font-family: var(--mono); font-size: 12.5px; color: var(--blue); text-decoration: none; word-break: break-all; }
   .url:hover { text-decoration: underline; }
   .url.pending { color: var(--muted); pointer-events: none; }
 
   .services { display: flex; gap: 7px; flex-wrap: wrap; }
   .chip {
-    font-family: var(--mono); font-size: 11.5px;
-    background: var(--panel-2); border: 1px solid var(--line);
-    padding: 3px 8px; border-radius: 6px; color: var(--muted);
+    font-family: var(--mono); font-size: 11.5px; background: var(--panel-2);
+    border: 1px solid var(--line); padding: 3px 8px; border-radius: 6px; color: var(--muted);
   }
   .chip b { color: var(--text); font-weight: 600; }
 
-  .meta {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 10px; border-top: 1px solid var(--line); padding-top: 12px;
-  }
+  .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+          border-top: 1px solid var(--line); padding-top: 12px; }
   .meta div { font-size: 11.5px; color: var(--muted); }
-  .meta .mv {
-    display: block; font-family: var(--mono); font-size: 14px;
-    color: var(--text); margin-top: 3px; font-variant-numeric: tabular-nums;
-  }
+  .meta .mv { display: block; font-family: var(--mono); font-size: 14px; color: var(--text);
+              margin-top: 3px; font-variant-numeric: tabular-nums; }
+
   .err {
-    font-size: 12px; color: var(--red); font-family: var(--mono);
-    background: #2a1414; border: 1px solid #542020;
-    padding: 8px 10px; border-radius: 7px; word-break: break-word;
+    font-size: 12.5px; color: var(--red); background: #2a1414; border: 1px solid #542020;
+    padding: 9px 11px; border-radius: 7px; word-break: break-word;
   }
-  button.destroy {
-    align-self: flex-start; background: transparent; color: var(--muted);
-    border: 1px solid var(--line); border-radius: 7px;
-    padding: 6px 11px; font-size: 12px; cursor: pointer;
+  .err details { margin-top: 6px; }
+  .err summary { cursor: pointer; color: #d99; font-size: 11.5px; }
+  .err pre { margin: 6px 0 0; font-size: 11px; white-space: pre-wrap; color: #caa;
+             max-height: 160px; overflow: auto; }
+  .card-actions { display: flex; gap: 8px; }
+
+  details.history summary {
+    cursor: pointer; color: var(--muted); font-size: 13.5px; padding: 4px 2px;
   }
-  button.destroy:hover:not(:disabled) { color: var(--red); border-color: #6d2525; }
-  button.destroy:disabled { opacity: .4; cursor: not-allowed; }
-  footer {
-    padding: 0 28px 40px; color: var(--muted); font-size: 12px;
+  .hrow {
+    display: grid; grid-template-columns: minmax(110px,1fr) 2fr 90px 90px 130px;
+    gap: 10px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line);
+    font-size: 12.5px; color: var(--muted);
   }
+  .hrow b { font-family: var(--mono); color: var(--text); font-weight: 600; }
+  .hrow .mono { font-family: var(--mono); }
+  @media (max-width: 700px) { .hrow { grid-template-columns: 1fr 90px 90px; } .hrow .hide-sm { display: none; } }
+
+  #toast {
+    position: fixed; right: 20px; bottom: 20px; max-width: 380px;
+    background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+    color: var(--text); padding: 12px 16px; border-radius: 9px; font-size: 13.5px;
+    opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none;
+    white-space: pre-wrap;
+  }
+  #toast.show { opacity: 1; transform: none; }
+  #toast.error { border-left-color: var(--red); }
+
+  footer { padding: 0 28px 40px; color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -164,8 +185,17 @@
     <h1>Ephem<span>era</span></h1>
     <p class="tagline">Disposable, fully isolated environments on Zerops — one per pull request, one per agent task.</p>
   </div>
-  <div class="live"><span class="dot" id="dot"></span><span id="liveText">connecting</span></div>
+  <nav class="links">
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera" target="_blank" rel="noopener">Source</a>
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera#http-api" target="_blank" rel="noopener">API</a>
+    <a href="https://github.com/KartikeyaNainkhwal/ephemera#give-an-agent-environments" target="_blank" rel="noopener">MCP</a>
+    <span class="live"><span class="dot" id="dot"></span><span id="liveText">connecting</span></span>
+  </nav>
 </header>
+
+<p class="how"><b>How it works:</b> connect a repository → every pull request gets a live app
+with <b>its own PostgreSQL</b> at a predictable URL in ~90 seconds → closing the PR destroys it.
+Agents get the same power over MCP.</p>
 
 <section class="stats">
   <div class="stat"><div class="k">Live environments</div><div class="v" id="sLive">0</div></div>
@@ -175,20 +205,79 @@
 </section>
 
 <main>
-  <div id="empty" class="empty">
-    No environments yet.
-    <code>curl -X POST $HOST/api/environments \
-  -H 'content-type: application/json' \
-  -d '{"slug":"demo","repo":"https://github.com/zeropsio/recipe-nodejs"}'</code>
+  <section class="panel">
+    <div class="panel-head">
+      <b>Connected repositories</b>
+      <span class="hint">pull requests in these repositories get preview environments automatically</span>
+    </div>
+    <div id="repoList"><span class="hint">Loading…</span></div>
+    <form class="inline" id="repoForm">
+      <input type="text" id="repoInput" placeholder="owner/repository" autocomplete="off" style="flex:1; min-width: 220px" />
+      <button type="submit">Connect</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <details>
+      <summary style="cursor:pointer"><b>New environment</b> <span class="hint">— build any public repository on demand</span></summary>
+      <form id="createForm" style="margin-top:14px">
+        <div class="form-grid">
+          <label>Slug <input type="text" name="slug" placeholder="mytest" required /></label>
+          <label>Repository URL <input type="text" name="repo" placeholder="https://github.com/owner/name" required class="form-wide" /></label>
+          <label>Branch <input type="text" name="branch" placeholder="(default branch)" /></label>
+          <label>Runtime
+            <select name="runtime">
+              <option value="nodejs@22">nodejs@22</option>
+              <option value="nodejs@20">nodejs@20</option>
+              <option value="bun@1.3">bun@1.3</option>
+              <option value="python@3.12">python@3.12</option>
+              <option value="go@1.22">go@1.22</option>
+              <option value="static">static</option>
+            </select>
+          </label>
+          <label>Port <input type="number" name="port" value="3000" min="1" max="65535" /></label>
+          <label>TTL
+            <select name="ttlMinutes">
+              <option value="120">2 hours</option>
+              <option value="240">4 hours</option>
+              <option value="1440">24 hours</option>
+            </select>
+          </label>
+          <label class="form-wide">Build commands <span class="hint">(one per line; default: npm install)</span>
+            <textarea name="buildCommands" placeholder="npm install"></textarea>
+          </label>
+          <label>Start command <input type="text" name="startCommand" placeholder="npm start" /></label>
+          <label style="flex-direction:row; align-items:center; gap:8px; margin-top:18px">
+            <input type="checkbox" name="withDatabase" checked style="width:16px;height:16px" /> Dedicated PostgreSQL
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" id="createBtn">Create environment</button>
+          <span class="form-error" id="createError"></span>
+        </div>
+      </form>
+    </details>
+  </section>
+
+  <div id="empty" class="empty" style="display:none">
+    No live environments. Connect a repository and open a pull request,
+    create one with the form above, or let an agent do it over MCP.
   </div>
   <div class="grid" id="grid"></div>
+
+  <details class="history">
+    <summary>History (<span id="histCount">0</span> destroyed)</summary>
+    <div id="histList" style="margin-top:8px"></div>
+  </details>
 </main>
 
 <footer>
-  Each environment is a dedicated application container plus its own PostgreSQL
-  database, created from a git repository and destroyed on demand. Costs are
-  estimates derived from published Zerops rates.
+  Each environment is a dedicated application container plus its own PostgreSQL database,
+  created from a git repository and destroyed on demand or at TTL expiry. Costs are estimates
+  derived from published Zerops rates. Mutating actions require the admin API key.
 </footer>
+
+<div id="toast"></div>
 
 <script>
 const state = new Map();
@@ -196,13 +285,66 @@ const state = new Map();
 const fmtCost = (n) =>
   n >= 1 ? '$' + n.toFixed(2) : n >= 0.01 ? '$' + n.toFixed(3) : '$' + n.toFixed(5);
 
+const escapeHtml = (s) =>
+  String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 function relative(target) {
   const ms = new Date(target).getTime() - Date.now();
   if (ms <= 0) return 'expired';
   const m = Math.floor(ms / 60000);
   if (m < 60) return m + 'm';
   const h = Math.floor(m / 60);
-  return h + 'h ' + (m % 60) + 'm';
+  if (h < 48) return h + 'h ' + (m % 60) + 'm';
+  return Math.floor(h / 24) + 'd';
+}
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function notify(message, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 4500);
+}
+
+/* ---------- admin key ---------- */
+function adminKey(forcePrompt = false) {
+  let key = localStorage.getItem('ephemera_admin_key') || '';
+  if (!key || forcePrompt) {
+    key = (prompt('Admin API key (EPHEMERA_API_KEY on the control plane):') || '').trim();
+    if (key) localStorage.setItem('ephemera_admin_key', key);
+  }
+  return key;
+}
+
+async function authed(path, options = {}) {
+  const key = adminKey();
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      'content-type': 'application/json',
+      ...(key ? { authorization: 'Bearer ' + key } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  if (response.status === 401) {
+    localStorage.removeItem('ephemera_admin_key');
+    notify('The admin key was rejected. You will be asked again on the next action.', true);
+  }
+  return response;
+}
+
+/* ---------- environments ---------- */
+async function seed() {
+  try {
+    const response = await fetch('/api/environments?all=true');
+    if (!response.ok) return;
+    const data = await response.json();
+    for (const env of data.environments) state.set(env.id, env);
+    render();
+  } catch { /* transient; SSE will retry */ }
 }
 
 function card(env) {
@@ -212,109 +354,240 @@ function card(env) {
 
   const ready = env.status === 'ready';
   const gone = env.status === 'destroyed' || env.status === 'destroying';
+  const [friendly, raw] = env.error ? env.error.split('\n---\n') : [null, null];
 
   el.innerHTML = `
     <div class="card-top">
-      <span class="slug">${env.slug}</span>
+      <span class="slug">${escapeHtml(env.slug)}</span>
       <span class="pill ${env.status}">${env.status}</span>
     </div>
     ${env.title ? `<p class="title">${escapeHtml(env.title)}</p>` : ''}
-    <a class="url ${ready ? '' : 'pending'}" href="${env.url}" target="_blank" rel="noopener">${env.url}</a>
+    <a class="url ${ready ? '' : 'pending'}" href="${escapeHtml(env.url)}" target="_blank" rel="noopener">${escapeHtml(env.url)}</a>
     <div class="services">
-      <span class="chip">app <b>${env.services.app}</b></span>
-      ${env.services.database ? `<span class="chip">postgres <b>${env.services.database}</b></span>` : ''}
-      ${env.pullRequest ? `<span class="chip">PR <b>#${env.pullRequest.number}</b></span>` : `<span class="chip">source <b>${env.source}</b></span>`}
+      <span class="chip">app <b>${escapeHtml(env.services.app)}</b></span>
+      ${env.services.database ? `<span class="chip">postgres <b>${escapeHtml(env.services.database)}</b></span>` : ''}
+      ${env.pullRequest
+        ? `<span class="chip">PR <b>#${env.pullRequest.number}</b></span>`
+        : `<span class="chip">source <b>${escapeHtml(env.source)}</b></span>`}
     </div>
-    ${env.error ? `<div class="err">${escapeHtml(env.error)}</div>` : ''}
+    ${friendly ? `<div class="err">${escapeHtml(friendly)}${
+        raw ? `<details><summary>technical detail</summary><pre>${escapeHtml(raw)}</pre></details>` : ''
+      }</div>` : ''}
     <div class="meta">
       <div>Provisioned<span class="mv">${env.provisioningSeconds !== null ? env.provisioningSeconds + 's' : '—'}</span></div>
       <div>Cost<span class="mv" data-cost>${fmtCost(env.cost.accrued)}</span></div>
       <div>${gone ? 'Ended' : 'Expires'}<span class="mv" data-ttl>${gone ? '—' : relative(env.expiresAt)}</span></div>
     </div>
-    ${gone ? '' : `<button class="destroy" data-id="${env.id}">Destroy now</button>`}
+    ${gone ? '' : `
+    <div class="card-actions">
+      <button class="quiet" data-extend="${env.id}">Extend +2h</button>
+      <button class="quiet danger" data-destroy="${env.id}">Destroy</button>
+    </div>`}
   `;
 
-  const btn = el.querySelector('button.destroy');
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      btn.textContent = 'Destroying…';
-      await fetch('/api/environments/' + env.id, { method: 'DELETE' });
+  el.querySelector('[data-extend]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    const response = await authed('/api/environments/' + env.id, {
+      method: 'PATCH', body: JSON.stringify({ ttlMinutes: 120 }),
     });
-  }
+    button.disabled = false;
+    if (response.ok) notify(env.slug + ' extended by 2 hours.');
+    else notify((await response.json()).error || 'Extend failed.', true);
+  });
+
+  el.querySelector('[data-destroy]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    if (button.dataset.armed !== '1') {
+      button.dataset.armed = '1';
+      button.textContent = 'Confirm destroy';
+      setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Destroy'; }, 3500);
+      return;
+    }
+    button.disabled = true;
+    button.textContent = 'Destroying…';
+    const response = await authed('/api/environments/' + env.id, { method: 'DELETE' });
+    if (!response.ok && response.status !== 401) {
+      notify((await response.json()).error || 'Destroy failed.', true);
+      button.disabled = false; button.textContent = 'Destroy';
+    }
+  });
+
   return el;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function historyRow(env) {
+  const lifespanMs = (env.destroyedAt ? new Date(env.destroyedAt) : new Date()) - new Date(env.createdAt);
+  const lifespan = Math.max(1, Math.round(lifespanMs / 60000));
+  return `<div class="hrow">
+    <b>${escapeHtml(env.slug)}</b>
+    <span class="hide-sm">${escapeHtml((env.repo || '').replace('https://github.com/', ''))}${env.branch ? '@' + escapeHtml(env.branch) : ''}</span>
+    <span class="mono">${lifespan}m</span>
+    <span class="mono">${fmtCost(env.cost.accrued)}</span>
+    <span class="hide-sm">${env.destroyedAt ? new Date(env.destroyedAt).toLocaleTimeString() : ''}</span>
+  </div>`;
 }
 
 function render() {
-  const grid = document.getElementById('grid');
-  const empty = document.getElementById('empty');
-  const list = [...state.values()].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const all = [...state.values()];
+  const active = all
+    .filter((e) => e.status !== 'destroyed')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const history = all
+    .filter((e) => e.status === 'destroyed')
+    .sort((a, b) => new Date(b.destroyedAt || 0) - new Date(a.destroyedAt || 0));
 
-  grid.replaceChildren(...list.map(card));
-  empty.style.display = list.length ? 'none' : 'block';
+  document.getElementById('grid').replaceChildren(...active.map(card));
+  document.getElementById('empty').style.display = active.length ? 'none' : 'block';
 
-  const live = list.filter((e) => e.status !== 'destroyed');
-  const running = list.filter((e) => ['creating', 'building', 'ready'].includes(e.status));
-  document.getElementById('sLive').textContent = live.length;
+  document.getElementById('histCount').textContent = history.length;
+  document.getElementById('histList').innerHTML =
+    history.slice(0, 30).map(historyRow).join('') ||
+    '<span class="hint">Nothing destroyed yet.</span>';
+
+  const burning = all.filter((e) => ['creating', 'building', 'ready'].includes(e.status));
+  document.getElementById('sLive').textContent = active.length;
   document.getElementById('sBurn').textContent =
-    '$' + running.reduce((s, e) => s + e.cost.hourly, 0).toFixed(4) + '/h';
+    '$' + burning.reduce((sum, e) => sum + e.cost.hourly, 0).toFixed(4) + '/h';
   document.getElementById('sSpend').textContent =
-    fmtCost(list.reduce((s, e) => s + e.cost.accrued, 0));
+    fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
 
-  const times = list.map((e) => e.provisioningSeconds).filter((v) => typeof v === 'number');
+  const times = all.map((e) => e.provisioningSeconds).filter((v) => typeof v === 'number');
   document.getElementById('sFast').textContent = times.length ? Math.min(...times) + 's' : '—';
 }
 
-// Advance the cost and TTL readouts locally between server events, so the
-// dashboard feels live rather than stepping once a minute.
+/* Advance costs and TTLs locally between server events. */
 setInterval(() => {
+  let dirtyStats = false;
   for (const env of state.values()) {
     if (['creating', 'building', 'ready'].includes(env.status)) {
       env.cost.accrued += env.cost.hourly / 3600;
-      const el = document.querySelector('#env-' + env.id + ' [data-cost]');
-      if (el) el.textContent = fmtCost(env.cost.accrued);
-      const ttl = document.querySelector('#env-' + env.id + ' [data-ttl]');
-      if (ttl) ttl.textContent = relative(env.expiresAt);
+      dirtyStats = true;
+      const costEl = document.querySelector('#env-' + env.id + ' [data-cost]');
+      if (costEl) costEl.textContent = fmtCost(env.cost.accrued);
+      const ttlEl = document.querySelector('#env-' + env.id + ' [data-ttl]');
+      if (ttlEl) ttlEl.textContent = relative(env.expiresAt);
     }
   }
-  const running = [...state.values()].filter((e) =>
-    ['creating', 'building', 'ready'].includes(e.status));
-  document.getElementById('sSpend').textContent =
-    fmtCost([...state.values()].reduce((s, e) => s + e.cost.accrued, 0));
-  document.getElementById('sBurn').textContent =
-    '$' + running.reduce((s, e) => s + e.cost.hourly, 0).toFixed(4) + '/h';
+  if (dirtyStats) {
+    const all = [...state.values()];
+    document.getElementById('sSpend').textContent =
+      fmtCost(all.reduce((sum, e) => sum + e.cost.accrued, 0));
+  }
 }, 1000);
 
+/* ---------- repositories ---------- */
+async function loadRepos() {
+  const listEl = document.getElementById('repoList');
+  try {
+    const response = await fetch('/api/repos');
+    if (!response.ok) { listEl.innerHTML = '<span class="hint">Unavailable.</span>'; return; }
+    const { repos } = await response.json();
+    if (!repos.length) {
+      listEl.innerHTML = '<span class="hint">No repositories connected yet. Connect one below — Ephemera creates the webhook for you.</span>';
+      return;
+    }
+    listEl.innerHTML = '';
+    for (const repo of repos) {
+      const row = document.createElement('div');
+      row.className = 'repo-row';
+      row.innerHTML = `
+        <span class="name">${escapeHtml(repo.fullName)}</span>
+        <span class="when">connected ${new Date(repo.connectedAt).toLocaleDateString()}</span>
+        <button class="quiet danger">Disconnect</button>`;
+      row.querySelector('button').addEventListener('click', async (event) => {
+        const button = event.currentTarget;
+        if (button.dataset.armed !== '1') {
+          button.dataset.armed = '1'; button.textContent = 'Confirm';
+          setTimeout(() => { button.dataset.armed = ''; button.textContent = 'Disconnect'; }, 3500);
+          return;
+        }
+        button.disabled = true;
+        const response = await authed('/api/repos/' + repo.fullName, { method: 'DELETE' });
+        if (response.ok) { notify(repo.fullName + ' disconnected.'); loadRepos(); }
+        else { notify((await response.json()).error || 'Disconnect failed.', true); button.disabled = false; }
+      });
+      listEl.appendChild(row);
+    }
+  } catch {
+    listEl.innerHTML = '<span class="hint">Unavailable.</span>';
+  }
+}
+
+document.getElementById('repoForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const input = document.getElementById('repoInput');
+  const value = input.value.trim();
+  if (!value) return;
+  const response = await authed('/api/repos', {
+    method: 'POST', body: JSON.stringify({ repo: value }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (response.ok) {
+    notify(value + ' connected. Pull requests now get preview environments.');
+    input.value = '';
+    loadRepos();
+  } else if (response.status !== 401) {
+    notify(body.error || 'Connect failed.', true);
+  }
+});
+
+/* ---------- create form ---------- */
+document.getElementById('createForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const errorEl = document.getElementById('createError');
+  const button = document.getElementById('createBtn');
+  errorEl.textContent = '';
+
+  const data = new FormData(form);
+  const buildCommands = String(data.get('buildCommands') || '')
+    .split('\n').map((line) => line.trim()).filter(Boolean);
+
+  const body = {
+    slug: data.get('slug'),
+    repo: data.get('repo'),
+    ...(data.get('branch') ? { branch: data.get('branch') } : {}),
+    runtime: data.get('runtime'),
+    port: Number(data.get('port')) || 3000,
+    withDatabase: data.get('withDatabase') === 'on',
+    ttlMinutes: Number(data.get('ttlMinutes')),
+    ...(buildCommands.length ? { buildCommands } : {}),
+    ...(data.get('startCommand') ? { startCommand: data.get('startCommand') } : {}),
+  };
+
+  button.disabled = true;
+  const response = await authed('/api/environments', {
+    method: 'POST', body: JSON.stringify(body),
+  });
+  button.disabled = false;
+  const payload = await response.json().catch(() => ({}));
+  if (response.ok) {
+    notify('Environment "' + payload.slug + '" is provisioning. URL: ' + payload.url);
+    form.reset();
+  } else if (response.status !== 401) {
+    errorEl.textContent = payload.details ? payload.details.join('\n') : (payload.error || 'Create failed.');
+  }
+});
+
+/* ---------- live feed ---------- */
 function connect() {
   const source = new EventSource('/api/stream');
   const dot = document.getElementById('dot');
   const text = document.getElementById('liveText');
 
-  source.addEventListener('open', () => {
-    dot.classList.add('on');
-    text.textContent = 'live';
-  });
-  source.addEventListener('snapshot', (event) => {
-    state.clear();
-    for (const env of JSON.parse(event.data).environments) state.set(env.id, env);
-    render();
-  });
+  source.addEventListener('open', () => { dot.classList.add('on'); text.textContent = 'live'; });
+  source.addEventListener('snapshot', () => { seed(); });
   source.addEventListener('environment', (event) => {
     const env = JSON.parse(event.data);
     state.set(env.id, env);
     render();
   });
-  source.addEventListener('error', () => {
-    dot.classList.remove('on');
-    text.textContent = 'reconnecting';
-  });
+  source.addEventListener('error', () => { dot.classList.remove('on'); text.textContent = 'reconnecting'; });
 }
+
+seed();
+loadRepos();
 connect();
 </script>
 </body>
