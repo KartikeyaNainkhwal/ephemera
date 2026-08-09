@@ -506,10 +506,12 @@ async function errorFrom(response) {
 
 async function authed(path, options = {}) {
   const key = adminKey();
+  // Only declare a JSON body when there actually is one - a content-type with
+  // an empty body is a real source of server-side parse errors.
   const response = await fetch(path, {
     ...options,
     headers: {
-      'content-type': 'application/json',
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
       ...(key ? { authorization: 'Bearer ' + key } : {}),
       ...(options.headers || {}),
     },

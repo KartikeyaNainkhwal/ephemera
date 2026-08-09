@@ -143,15 +143,33 @@ function slugForPullRequest(fullName: string, number: number): string {
 
 export async function registerGithubRoutes(app: FastifyInstance): Promise<void> {
   // Capture the raw body so webhook signatures can be verified byte-for-byte.
+  //
+  // This parser is **global** - registering it replaces Fastify's built-in JSON
+  // parser for every request, not just webhooks. So it has to tolerate the
+  // shapes real clients send: browsers routinely set `content-type:
+  // application/json` on bodyless DELETE and POST requests, and `JSON.parse('')`
+  // throws. That threw a 500 on every dashboard disconnect.
   app.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },
     (request, body, done) => {
-      (request as FastifyRequest & { rawBody?: string }).rawBody = body as string;
+      const raw = typeof body === 'string' ? body : '';
+      (request as FastifyRequest & { rawBody?: string }).rawBody = raw;
+
+      if (raw.trim() === '') {
+        // No body is not an error; the route decides whether it needed one.
+        done(null, undefined);
+        return;
+      }
       try {
-        done(null, JSON.parse(body as string));
-      } catch (error) {
-        done(error as Error, undefined);
+        done(null, JSON.parse(raw));
+      } catch {
+        // Malformed JSON is the client's mistake: 400, not 500.
+        const error = Object.assign(
+          new Error('Request body is not valid JSON.'),
+          { statusCode: 400 },
+        );
+        done(error, undefined);
       }
     },
   );
